@@ -1,0 +1,15 @@
+# Claude Code settings
+.claude/
+
+# Firebase local files
+.firebase/
+firebase-debug.log
+.firebaserc
+
+# macOS
+.DS_Store
+
+# Environment variables (never commit these)
+.env
+.env.*
+*.env
