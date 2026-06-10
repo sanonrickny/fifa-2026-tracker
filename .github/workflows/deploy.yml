@@ -27,5 +27,5 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa-key.json
         run: |
           firebase deploy --only hosting \
-            --project tradingjournal-482023 \
+            --project fifa-2026-tracker \
             --non-interactive
