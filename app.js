@@ -5,6 +5,7 @@ let matchesById = {}; // id -> match object
 let currentModalId = null;
 let refreshTimer = null;
 let pastExpanded = false; // Full Schedule: whether finished games are revealed
+let lastRenderSig = null;  // skip redundant full re-renders (preserves scroll/interaction)
 
 // Tournament data window + persistence
 const TOURNAMENT_START = '20260611';
@@ -569,6 +570,10 @@ function feedLabel(spec) {
 }
 function renderBracket() {
   const container = document.getElementById('bracketEl');
+  // The horizontal scroll lives on the wrapper; replacing the inner content
+  // resets it to 0, so capture and restore it around the rebuild.
+  const wrap = container.closest('.bracket-wrapper');
+  const savedScrollLeft = wrap ? wrap.scrollLeft : 0;
   container.innerHTML = '';
 
   KNOCKOUT_ROUNDS.forEach(round => {
@@ -599,6 +604,8 @@ function renderBracket() {
 
     container.appendChild(col);
   });
+
+  if (wrap) wrap.scrollLeft = savedScrollLeft;
 }
 
 // ─── WIN PROBABILITY ──────────────────────────────────────────────────────────
@@ -825,7 +832,10 @@ function openModal(matchId) {
 }
 
 function openKnockoutModal(m) {
-  // Simplified modal for knockout matches
+  // Simplified modal for knockout matches. Track the open id so the live-odds
+  // refresh in fetchScores targets the right match (knockout ids aren't in
+  // matchesById, so that branch safely no-ops instead of acting on a stale id).
+  currentModalId = m.id;
   document.getElementById('mRound').textContent = 'Knockout Stage';
   document.getElementById('mHomeFlag').textContent = m.home?.flag || '🏳️';
   document.getElementById('mHomeName').textContent = m.home?.name || 'TBD';
@@ -853,7 +863,7 @@ function openKnockoutModal(m) {
     <div class="modal-meta-row"><span class="modal-meta-icon">📅</span><span class="modal-meta-val">${m.date}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">⏰</span><span class="modal-meta-val">${m.time}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">📍</span><span class="modal-meta-val">${m.venue}</span></div>
-    <div class="modal-meta-row"><span class="modal-meta-icon">📡</span><span class="modal-meta-val">Broadcasting on FOX</span></div>
+    <div class="modal-meta-row"><span class="modal-meta-icon">📡</span><span class="modal-meta-val">Broadcasting on FOX / FS1</span></div>
   `;
 
   document.getElementById('mFreeLinks').innerHTML = FREE_STREAMS.map(s => `
@@ -930,7 +940,28 @@ function updateCountdown() {
 }
 
 // ─── RENDER ALL ───────────────────────────────────────────────────────────────
+// A compact fingerprint of everything the three panels render. When it's
+// unchanged (the common case between 60s polls), skip the full innerHTML
+// rebuild so the user's bracket scroll, hover, and taps aren't interrupted.
+function renderSignature() {
+  const now = Date.now();
+  const parts = [userTZ, pastExpanded ? '1' : '0'];
+  Object.values(matchesById)
+    .sort((a, b) => (a.id < b.id ? -1 : 1))
+    .forEach(m => parts.push(
+      `${m.id}:${m.status}:${m.homeScore}:${m.awayScore}:${m.minute}:${matchPhase(m, now)}`
+    ));
+  KNOCKOUT_ROUNDS.forEach(r => r.matches.forEach(m => parts.push(
+    `${m.id}:${m.home?.code || ''}:${m.away?.code || ''}:${m.status}:${m.homeScore}:${m.awayScore}:${m.winnerCode || ''}`
+  )));
+  parts.push('q:' + [...QUAL.best8].sort().join(',') + ':' + (QUAL.groupStageDone ? '1' : '0'));
+  return parts.join('|');
+}
+
 function renderAll() {
+  const sig = renderSignature();
+  if (sig === lastRenderSig) return; // nothing the panels show has changed
+  lastRenderSig = sig;
   renderGroups();
   renderSchedule();
   renderBracket();
