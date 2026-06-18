@@ -395,9 +395,14 @@ function renderGroups() {
         <div class="group-teams-mini">${grp.teams.map(t=>t.flag).join('')}</div>
       </div>
       <table class="standings-table">
+        <colgroup>
+          <col class="col-team">
+          <col class="col-num"><col class="col-num"><col class="col-num">
+          <col class="col-num"><col class="col-num"><col class="col-num">
+        </colgroup>
         <thead>
           <tr>
-            <th colspan="2">Team</th>
+            <th>Team</th>
             <th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th>
           </tr>
         </thead>
@@ -411,8 +416,7 @@ function renderGroups() {
               a.t.name.localeCompare(b.t.name)
             )
             .map(({ t, s }, i) => `<tr>
-              <td><span class="team-pos ${i<2?'pos-q':i===2?(QUAL.best8.has(letter)?'pos-q':'pos-m'):''}">${i+1}</span></td>
-              <td><div class="team-cell"><span class="team-flag">${t.flag}</span><span class="team-name">${t.name}</span></div></td>
+              <td><div class="team-cell"><span class="team-pos ${i<2?'pos-q':i===2?(QUAL.best8.has(letter)?'pos-q':'pos-m'):''}">${i+1}</span><span class="team-flag">${t.flag}</span><span class="team-name">${t.name}</span></div></td>
               <td>${s.p}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td>
               <td>${s.gd >= 0 ? '+'+s.gd : s.gd}</td>
               <td><strong>${s.pts}</strong></td>

@@ -19,6 +19,9 @@
 
 html { scroll-behavior: smooth; }
 
+/* Remove the default blue tap-flash on touch; we provide our own :active states */
+* { -webkit-tap-highlight-color: transparent; }
+
 body {
   font-family: 'Rajdhani', sans-serif;
   background: var(--bg);
@@ -114,6 +117,8 @@ body::after {
   overflow: hidden;
   max-height: 340px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .tz-picker.open .tz-dropdown-menu { display: block; }
 .tz-option {
@@ -591,6 +596,8 @@ body::after {
 /* ── KNOCKOUT BRACKET ── */
 .bracket-wrapper {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: 1rem;
 }
 .bracket {
@@ -683,6 +690,8 @@ body::after {
   max-width: 600px;
   max-height: 92vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
@@ -950,27 +959,82 @@ body::after {
 ::-webkit-scrollbar-thumb { background: var(--gray2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gray); }
 
+/* ── TOUCH FEEDBACK ──
+   :hover never fires on touch, so taps felt dead. These give an immediate
+   press response on phones (and a quick flash on desktop click). */
+.tab-btn:active { transform: scale(0.96); }
+.match-row:active { background: rgba(255,255,255,0.08); }
+.schedule-match-card:active { background: rgba(17,24,39,0.95); border-color: var(--border); }
+.bracket-match:active { border-color: var(--border); }
+.watch-link:active { background: rgba(17,24,39,0.95); transform: translateX(2px); }
+.past-toggle-bar:active { border-color: var(--gold); }
+.tz-option:active { background: rgba(245,197,24,0.16); }
+.tz-picker:active { border-color: var(--gold); }
+.modal-close-btn:active { background: rgba(255,255,255,0.2); }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 640px) {
   .hero { padding: 2rem 1rem 1.5rem; }
   .hero-title { font-size: clamp(2.5rem, 13vw, 5rem); }
-  .groups-grid { grid-template-columns: 1fr; }
+  .hero-eyebrow { font-size: 0.65rem; letter-spacing: 0.14em; }
+  .hero-sub { font-size: 0.9rem; }
+
+  /* Single column that is allowed to shrink below its content's intrinsic
+     width — `1fr` alone (= minmax(auto,1fr)) refuses to, forcing page overflow. */
+  .groups-grid { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+
+  /* Standings: fixed layout so the 6 numeric columns stay narrow and the
+     team name truncates instead of pushing the card wider than the screen. */
+  .standings-table { table-layout: fixed; }
+  .standings-table .col-team { width: auto; }
+  .standings-table .col-num { width: 1.65rem; }
+  .standings-table th,
+  .standings-table td { padding: 0.5rem 0.2rem; font-size: 0.82rem; }
+  .standings-table th:first-child,
+  .standings-table td:first-child { padding-left: 0.7rem; }
+  .team-cell { min-width: 0; }
+  .team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .group-header { padding: 0.8rem 0.9rem; }
+  .group-teams-mini { font-size: 1.05rem; }
+
   .smc-teams { gap: 0.4rem; }
   .smc-team { font-size: 0.82rem; }
   .modal-flag { font-size: 2rem; }
   .modal-score-display { font-size: 2rem; }
   .modal-team-name { font-size: 1.1rem; }
-  .header-logo .logo-main { font-size: 1.05rem; }
-  .header-logo .logo-ball { font-size: 1.25rem; }
   .schedule-match-card { flex-wrap: wrap; gap: 0.5rem; }
   .smc-right { width: 100%; display: flex; gap: 1rem; align-items: center; }
   .tab-btn {
     font-size: 0.82rem;
-    padding: 0.5rem 0.85rem;
+    padding: 0.5rem 0.95rem;
     letter-spacing: 0.05em;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;           /* comfortable tap target for primary nav */
   }
-  .tz-picker { padding: 0.3rem 0.55rem; font-size: 0.8rem; }
+
+  /* Bigger, easier-to-hit close target on phones */
+  .modal-close-btn { width: 40px; height: 40px; font-size: 1.2rem; top: 0.85rem; right: 1rem; }
+  .tz-option { padding: 0.85rem 1rem; }   /* ~44px tall rows */
+
+  /* Header: keep it on one row without pushing the interactive tz-picker
+     off-screen. Logo shrinks/truncates; the timestamp is dropped. */
+  .site-header { padding: 0 0.85rem; gap: 0.6rem; }
+  .header-logo { flex-shrink: 1; min-width: 0; }
+  .header-logo .logo-text { min-width: 0; }
+  .header-logo .logo-main {
+    font-size: 1.05rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .header-logo .logo-sub {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .header-logo .logo-ball { font-size: 1.25rem; }
+  .last-updated { display: none; }
+  .live-badge { padding: 0.25rem 0.5rem; font-size: 0.65rem; }
+  .tz-picker { padding: 0.45rem 0.55rem; font-size: 0.8rem; min-height: 40px; }
   .tz-label { max-width: 72px; overflow: hidden; text-overflow: ellipsis; }
   .tz-dropdown-menu { right: -8px; min-width: 210px; }
 }
@@ -980,9 +1044,11 @@ body::after {
     padding: 0.45rem 0.7rem;
     letter-spacing: 0.03em;
   }
-  .site-header { padding: 0 0.75rem; gap: 0.5rem; }
+  .site-header { padding: 0 0.6rem; gap: 0.45rem; }
   .header-logo .logo-main { font-size: 0.95rem; }
-  .header-logo .logo-ball { font-size: 1.1rem; }
+  .header-logo .logo-sub { font-size: 0.62rem; letter-spacing: 0.12em; }
+  .header-logo .logo-ball { font-size: 1.05rem; }
+  .tz-label { max-width: 58px; }
 }
 
 /* Score fade-in */
