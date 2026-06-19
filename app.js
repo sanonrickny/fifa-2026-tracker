@@ -925,8 +925,9 @@ function updateCountdown() {
   const now = new Date();
   const diff = kickoff - now;
   if (diff <= 0) {
-    document.getElementById('countdownRow').innerHTML = `<div style="font-family:'Bebas Neue';font-size:1.5rem;color:var(--gold);letter-spacing:0.1em">⚽ THE TOURNAMENT IS LIVE!</div>`;
-    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; } // nothing left to tick
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    // renderLiveStrip() owns countdownRow once the tournament has started —
+    // writing here would overwrite the live game cards on every 1s tick.
     return;
   }
   const d = Math.floor(diff / 86400000);
