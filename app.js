@@ -965,6 +965,53 @@ function renderAll() {
   renderGroups();
   renderSchedule();
   renderBracket();
+  renderLiveStrip();
+}
+
+// ─── LIVE STRIP ───────────────────────────────────────────────────────────────
+function getLiveMatches() {
+  return Object.values(matchesById)
+    .filter(m => m.status === 'live')
+    .sort((a, b) => a.kickoffUTC - b.kickoffUTC);
+}
+
+function renderLiveStrip() {
+  const row = document.getElementById('countdownRow');
+  if (!row) return;
+  const live = getLiveMatches();
+  if (live.length === 0) {
+    if (Date.now() >= new Date('2026-06-11T19:00:00Z').getTime()) {
+      row.innerHTML = `<div style="font-family:'Bebas Neue';font-size:1.5rem;color:var(--gold);letter-spacing:0.1em">⚽ THE TOURNAMENT IS LIVE!</div>`;
+    }
+    return;
+  }
+  const cards = live.map(m => {
+    const hs = m.homeScore ?? 0;
+    const as = m.awayScore ?? 0;
+    const min = m.minute || 'LIVE';
+    return `
+      <div class="live-match-card" data-match-id="${m.id}">
+        <div class="lmc-team">
+          <span class="lmc-flag">${m.home?.flag || '🏳️'}</span>
+          <span class="lmc-name">${m.home?.code || '???'}</span>
+        </div>
+        <div class="lmc-center">
+          <div class="lmc-score">${hs} – ${as}</div>
+          <div class="lmc-live-row">
+            <span class="lmc-dot"></span>
+            <span class="lmc-min">${min}</span>
+          </div>
+        </div>
+        <div class="lmc-team">
+          <span class="lmc-flag">${m.away?.flag || '🏳️'}</span>
+          <span class="lmc-name">${m.away?.code || '???'}</span>
+        </div>
+      </div>`;
+  }).join('');
+  row.innerHTML = `<div class="live-strip">${cards}</div>`;
+  row.querySelectorAll('.live-match-card').forEach(card => {
+    card.addEventListener('click', () => openModal(card.dataset.matchId));
+  });
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
