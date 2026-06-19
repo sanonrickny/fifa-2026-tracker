@@ -357,7 +357,7 @@ function loadResults() {
     Object.entries(d.groups || {}).forEach(([id, v]) => {
       const m = matchesById[id];
       if (!m) return;
-      m.status = v.s; m.homeScore = v.h; m.awayScore = v.a; m.minute = v.m; m.espnId = v.e;
+      m.status = v.s === 'live' ? 'upcoming' : v.s; m.homeScore = v.h; m.awayScore = v.a; m.minute = v.m; m.espnId = v.e;
     });
     koResultsCache = d.ko || {};
     lastUpdated = d.t || null;
