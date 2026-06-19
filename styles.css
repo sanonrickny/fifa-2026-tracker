@@ -959,6 +959,99 @@ body::after {
 ::-webkit-scrollbar-thumb { background: var(--gray2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gray); }
 
+/* ── LIVE STRIP ── */
+.live-strip {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  gap: 0.75rem;
+  justify-content: center;
+  padding: 0.25rem 1rem;
+  width: 100%;
+  scrollbar-width: none;
+}
+.live-strip::-webkit-scrollbar { display: none; }
+
+.live-match-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 260px;
+  width: min(85vw, 300px);
+  flex-shrink: 0;
+  scroll-snap-align: center;
+  background: var(--card);
+  border: 1px solid rgba(255,59,48,0.35);
+  border-top: 2px solid var(--red);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.live-match-card:hover {
+  border-color: rgba(255,59,48,0.7);
+  box-shadow: 0 0 18px rgba(255,59,48,0.15);
+}
+.live-match-card:active { background: rgba(255,255,255,0.05); }
+
+.lmc-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+.lmc-flag { font-size: 1.8rem; line-height: 1; }
+.lmc-name {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--white);
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lmc-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+.lmc-score {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--white);
+  letter-spacing: 0.05em;
+}
+.lmc-live-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.lmc-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  flex-shrink: 0;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.lmc-min {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: var(--red);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 /* ── TOUCH FEEDBACK ──
    :hover never fires on touch, so taps felt dead. These give an immediate
    press response on phones (and a quick flash on desktop click). */
@@ -1037,6 +1130,9 @@ body::after {
   .tz-picker { padding: 0.45rem 0.55rem; font-size: 0.8rem; min-height: 40px; }
   .tz-label { max-width: 72px; overflow: hidden; text-overflow: ellipsis; }
   .tz-dropdown-menu { right: -8px; min-width: 210px; }
+  .lmc-flag { font-size: 1.5rem; }
+  .lmc-name { font-size: 0.72rem; max-width: 55px; }
+  .lmc-score { font-size: 1.25rem; }
 }
 @media (max-width: 380px) {
   .tab-btn {
