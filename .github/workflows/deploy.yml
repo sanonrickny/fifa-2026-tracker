@@ -22,7 +22,7 @@ jobs:
       - name: Write service account key
         env:
           SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: printf '%s' "$SA_KEY" > /tmp/sa-key.json
+        run: printf '%s' "$SA_KEY" | base64 --decode > /tmp/sa-key.json
 
       - name: Validate service account key (no secrets printed)
         run: |
