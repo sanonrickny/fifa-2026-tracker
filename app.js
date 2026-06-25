@@ -985,7 +985,7 @@ function renderLiveStrip() {
   const live = getLiveMatches();
   if (live.length === 0) {
     if (Date.now() >= new Date('2026-06-11T19:00:00Z').getTime()) {
-      row.innerHTML = `<div style="font-family:'Bebas Neue';font-size:1.5rem;color:var(--gold);letter-spacing:0.1em">⚽ THE TOURNAMENT IS LIVE!</div>`;
+      row.innerHTML = `<div class="tournament-live-banner">⚽ THE TOURNAMENT IS LIVE!</div>`;
     }
     return;
   }
