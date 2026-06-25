@@ -1,27 +1,25 @@
-# ⚽ FIFA World Cup 2026 Tracker
+# FIFA World Cup 2026 Tracker
 
-A clean, live tracker for the 2026 World Cup hosted across the USA, Canada, and Mexico.
+A live match tracker for the 2026 World Cup across the USA, Canada, and Mexico.
 
 ## What it does
 
-- 🔴 **Live scores** as matches happen
-- 📅 **Full schedule** with your local time (pick from any US/CA time zone)
-- 🏆 **Bracket & standings** that update automatically
-- 📱 **Mobile-friendly** — looks great on your phone
+→ Live scores as matches happen  
+→ Full schedule displayed in your local time — pick any US or Canadian time zone  
+→ Bracket and standings that update automatically  
+→ Fully responsive, works well on mobile  
 
-## Tech
+## Stack
 
-Just plain HTML, CSS, and JavaScript. No frameworks. Hosted on Firebase.
+Plain HTML, CSS, and JavaScript. No frameworks. Hosted on Firebase.
 
-## Run it locally
-
-Open `index.html` in your browser, or serve the folder:
+## Run locally
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Then visit [http://localhost:8000](http://localhost:8000).
+Then open [http://localhost:8000](http://localhost:8000).
 
 ---
 
