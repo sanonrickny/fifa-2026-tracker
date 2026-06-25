@@ -14,7 +14,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
@@ -24,22 +24,10 @@ jobs:
           SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: printf '%s' "$SA_KEY" | base64 --decode > /tmp/sa-key.json
 
-      - name: Validate service account key (no secrets printed)
-        run: |
-          echo "file bytes: $(wc -c < /tmp/sa-key.json)"
-          node -e '
-            const k = require("/tmp/sa-key.json");
-            console.log("type:", k.type);
-            console.log("project_id:", k.project_id);
-            console.log("has client_email:", !!k.client_email);
-            console.log("has private_key:", !!k.private_key);
-          '
-
       - name: Deploy to Firebase Hosting
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa-key.json
         run: |
           firebase deploy --only hosting \
             --project fifa-2026-tracker \
-            --non-interactive \
-            --debug 2>&1 | grep -ivE 'private_key|client_email|"token"|Bearer' | tail -60
+            --non-interactive
