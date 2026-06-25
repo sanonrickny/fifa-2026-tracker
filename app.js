@@ -477,7 +477,10 @@ function matchPhase(m, now) {
   const kickoff = m.kickoffUTC.getTime();
   if (now < kickoff)                  return 'future';
   if (now < kickoff + IN_PROGRESS_MS) return 'live';   // kicked off, feed not updated yet
-  return 'past';                                        // started long ago, never went final
+  // ponytail: only push to past if it's a previous day; today's games stay
+  // visible until ESPN confirms final, so the user always sees today's schedule.
+  const todayKey = new Date(now).toLocaleDateString('en-CA', { timeZone: userTZ });
+  return getDateKey(m.kickoffUTC, userTZ) < todayKey ? 'past' : 'future';
 }
 
 // Build the day-grouped card markup for a set of matches (oldest → newest).
