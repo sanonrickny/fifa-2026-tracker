@@ -24,6 +24,17 @@ jobs:
           SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: printf '%s' "$SA_KEY" > /tmp/sa-key.json
 
+      - name: Validate service account key (no secrets printed)
+        run: |
+          echo "file bytes: $(wc -c < /tmp/sa-key.json)"
+          node -e '
+            const k = require("/tmp/sa-key.json");
+            console.log("type:", k.type);
+            console.log("project_id:", k.project_id);
+            console.log("has client_email:", !!k.client_email);
+            console.log("has private_key:", !!k.private_key);
+          '
+
       - name: Deploy to Firebase Hosting
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa-key.json
