@@ -41,4 +41,5 @@ jobs:
         run: |
           firebase deploy --only hosting \
             --project fifa-2026-tracker \
-            --non-interactive
+            --non-interactive \
+            --debug 2>&1 | grep -ivE 'private_key|client_email|"token"|Bearer' | tail -60
