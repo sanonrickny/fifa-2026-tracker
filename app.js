@@ -319,6 +319,9 @@ function computeQualification() {
     const f = FEEDS[m.id];
     m.home = m.away = null; m.homeScore = m.awayScore = null;
     m.status = 'upcoming'; m.winnerCode = null;
+    // Real kickoff instant so knockout games sort into the full schedule.
+    // ponytail: hardcode EDT (-04:00) — every WC2026 knockout date is in summer.
+    m.kickoffUTC = new Date(`${m.date} 2026 ${m.time.replace(/\s*ET$/, '')} GMT-0400`);
     if (!f) return;
     m.home = resolveFeed(f.home, ranked, complete, thirdAssign, groupStageDone, koById, m.id);
     m.away = resolveFeed(f.away, ranked, complete, thirdAssign, groupStageDone, koById, m.id);
@@ -472,19 +475,60 @@ const IN_PROGRESS_MS = 2.25 * 60 * 60 * 1000; // ~135 min safety window for a la
 // Classify a match relative to `now`. Live-data status wins; the kickoff clock
 // is the fallback so a game still reads correctly when the ESPN feed lags.
 function matchPhase(m, now) {
-  if (m.status === 'live')  return 'live';
-  if (m.status === 'final') return 'past';
-  const kickoff = m.kickoffUTC.getTime();
-  if (now < kickoff)                  return 'future';
-  if (now < kickoff + IN_PROGRESS_MS) return 'live';   // kicked off, feed not updated yet
-  // ponytail: only push to past if it's a previous day; today's games stay
-  // visible until ESPN confirms final, so the user always sees today's schedule.
+  // A game only leaves "today's schedule" once the calendar day rolls over —
+  // so finished games still played *today* stay visible alongside the rest.
   const todayKey = new Date(now).toLocaleDateString('en-CA', { timeZone: userTZ });
-  return getDateKey(m.kickoffUTC, userTZ) < todayKey ? 'past' : 'future';
+  if (getDateKey(m.kickoffUTC, userTZ) < todayKey) return 'past';
+  if (m.status === 'live') return 'live';
+  if (m.status === 'final') return 'future';            // today's final — keep it in the day list
+  const kickoff = m.kickoffUTC.getTime();
+  if (now >= kickoff && now < kickoff + IN_PROGRESS_MS) return 'live'; // kicked off, feed lagging
+  return 'future';
+}
+
+// Knockout matches live in KNOCKOUT_ROUNDS, not matchesById; look one up by id.
+function knockoutMatchById(id) {
+  for (const r of KNOCKOUT_ROUNDS) for (const m of r.matches) if (m.id === id) return m;
+}
+function openKnockoutById(id) { const m = knockoutMatchById(id); if (m) openKnockoutModal(m); }
+// Short round badge from the match id (R32M1→R32, QF1→QF, FIN→F).
+function koBadge(id) {
+  return id.startsWith('R32') ? 'R32' : id.startsWith('R16') ? 'R16'
+       : id.startsWith('QF') ? 'QF' : id.startsWith('SF') ? 'SF' : 'F';
+}
+// One team cell — flag + name when known, else the bracket feed label (TBD / Winner A …).
+function teamCell(team, feedSpec) {
+  return team
+    ? `<div class="smc-team"><span class="smc-flag">${team.flag}</span>${team.name}</div>`
+    : `<div class="smc-team smc-tbd">${feedLabel(feedSpec)}</div>`;
+}
+
+// Render a single schedule card. Handles both group matches and knockout matches
+// (no group letter, possibly-undecided teams, no broadcaster, KO modal).
+function scheduleCard(m, now) {
+  const sd = scoreDisplay(m);
+  const live = matchPhase(m, now) === 'live';
+  const isKO = !m.group;
+  const f = isKO ? (FEEDS[m.id] || {}) : {};
+  const click = isKO ? `openKnockoutById('${m.id}')` : `openModal('${m.id}')`;
+  return `<div class="schedule-match-card ${live?'is-live':''}" onclick="${click}">
+    <div class="smc-group-badge">${isKO ? koBadge(m.id) : m.group}</div>
+    <div class="smc-teams">
+      ${teamCell(m.home, f.home)}
+      <div class="smc-vs-score ${sd.cls}">${sd.text}</div>
+      ${teamCell(m.away, f.away)}
+    </div>
+    <div class="smc-right">
+      <div class="smc-time">${formatTime(m.kickoffUTC, userTZ)}</div>
+      <div class="smc-venue">${isKO ? m.venue : m.city}</div>
+      ${isKO ? '' : `<span class="smc-broadcaster">${m.broadcaster}</span>`}
+    </div>
+  </div>`;
 }
 
 // Build the day-grouped card markup for a set of matches (oldest → newest).
 function buildDayGroups(matches, now) {
+  const todayKey = new Date(now).toLocaleDateString('en-CA', { timeZone: userTZ });
   const byDay = {};
   matches.forEach(m => {
     const dk = getDateKey(m.kickoffUTC, userTZ);
@@ -492,7 +536,9 @@ function buildDayGroups(matches, now) {
   });
   return Object.keys(byDay).sort().map(dk => {
     const dayMatches = byDay[dk].sort((a,b) => a.kickoffUTC - b.kickoffUTC);
-    const dayLabel = formatDateFull(dayMatches[0].kickoffUTC, userTZ);
+    const dayLabel = dk === todayKey
+      ? `Today · ${formatDateFull(dayMatches[0].kickoffUTC, userTZ)}`
+      : formatDateFull(dayMatches[0].kickoffUTC, userTZ);
     return `
       <div class="schedule-day">
         <div class="schedule-day-header">
@@ -500,23 +546,7 @@ function buildDayGroups(matches, now) {
           <div class="schedule-divider"></div>
         </div>
         <div class="schedule-matches-list">
-          ${dayMatches.map(m => {
-            const sd = scoreDisplay(m);
-            const live = matchPhase(m, now) === 'live';
-            return `<div class="schedule-match-card ${live?'is-live':''}" onclick="openModal('${m.id}')">
-              <div class="smc-group-badge">${m.group}</div>
-              <div class="smc-teams">
-                <div class="smc-team"><span class="smc-flag">${m.home.flag}</span>${m.home.name}</div>
-                <div class="smc-vs-score ${sd.cls}">${sd.text}</div>
-                <div class="smc-team"><span class="smc-flag">${m.away.flag}</span>${m.away.name}</div>
-              </div>
-              <div class="smc-right">
-                <div class="smc-time">${formatTime(m.kickoffUTC, userTZ)}</div>
-                <div class="smc-venue">${m.city}</div>
-                <span class="smc-broadcaster">${m.broadcaster}</span>
-              </div>
-            </div>`;
-          }).join('')}
+          ${dayMatches.map(m => scheduleCard(m, now)).join('')}
         </div>
       </div>`;
   }).join('');
@@ -533,8 +563,13 @@ function renderSchedule() {
 
   // Partition into finished vs. (live + upcoming). Live and future render
   // together so the in-progress game sits at the top of the default view.
+  // Group-stage matches plus every knockout game that now has a kickoff instant,
+  // so the full schedule spans group + bracket days.
+  const all = Object.values(matchesById);
+  KNOCKOUT_ROUNDS.forEach(r => r.matches.forEach(m => { if (m.kickoffUTC) all.push(m); }));
+
   const past = [], current = [];
-  Object.values(matchesById).forEach(m => {
+  all.forEach(m => {
     (matchPhase(m, now) === 'past' ? past : current).push(m);
   });
 

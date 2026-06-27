@@ -504,6 +504,7 @@ body::before {
 .smc-teams { display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; flex-wrap: wrap; }
 .smc-team { display: flex; align-items: center; gap: 0.35rem; font-size: 0.95rem; font-weight: 700; color: var(--white); }
 .smc-flag { font-size: 1.15rem; }
+.smc-tbd { color: var(--muted); font-weight: 600; font-style: italic; }
 .smc-vs-score {
   font-family: var(--font-mono);
   font-size: 1rem; font-weight: 700;
