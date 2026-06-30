@@ -529,8 +529,8 @@ body::before {
   overflow-x: auto; overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch; padding-bottom: 1rem;
 }
-.bracket { display: flex; gap: 2.5rem; min-width: max-content; padding: 1rem; align-items: flex-start; }
-.bracket-round { display: flex; flex-direction: column; gap: 1rem; min-width: 190px; }
+.bracket { display: flex; gap: 2.5rem; min-width: max-content; padding: 1rem; align-items: stretch; }
+.bracket-round { display: flex; flex-direction: column; min-width: 190px; }
 .bracket-round-label {
   font-family: var(--font-display);
   font-weight: 700; font-size: 1.1rem;
@@ -538,6 +538,36 @@ body::before {
   color: var(--white); text-align: center;
   margin-bottom: 0.25rem; padding-bottom: 0.5rem;
   border-bottom: 2px solid var(--white);
+}
+
+/* Each round's matches share the column height equally so a later round's match
+   sits centered between the two earlier matches that feed it — the alignment
+   the connector lines rely on. */
+.bracket-body { display: flex; flex-direction: column; flex: 1; }
+.bracket-cell {
+  flex: 1 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; min-height: 4rem;
+}
+.bracket-cell .bracket-match { width: 100%; }
+
+/* Connector lines. Each pair of feeder matches drops a vertical line that meets
+   a horizontal stub from the match they feed. Half the 2.5rem column gap each. */
+.bracket-round:not(:last-child) .bracket-cell::after {
+  content: ''; position: absolute;
+  left: 100%; width: 1.25rem; height: 50%;
+  border-right: 2px solid var(--border);
+}
+.bracket-round:not(:last-child) .bracket-cell:nth-child(odd)::after {
+  top: 50%; border-top: 2px solid var(--border);     /* upper match: line drops down */
+}
+.bracket-round:not(:last-child) .bracket-cell:nth-child(even)::after {
+  bottom: 50%; border-bottom: 2px solid var(--border); /* lower match: line rises up */
+}
+.bracket-round:not(:first-child) .bracket-cell::before {
+  content: ''; position: absolute;
+  right: 100%; width: 1.25rem; top: 50%;
+  border-top: 2px solid var(--border);
 }
 .bracket-match {
   background: var(--card);
@@ -557,6 +587,7 @@ body::before {
 .bracket-team.tbd { color: var(--gray2); font-style: italic; }
 .bracket-team.winner { color: var(--green); font-weight: 700; }
 .bracket-team .bt-score { margin-left: auto; font-family: var(--font-mono); font-size: 0.85rem; }
+.bracket-team .bt-pens { color: var(--gold); font-size: 0.72rem; }
 
 .bracket-date-line {
   background: var(--bg3);

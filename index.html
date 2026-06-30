@@ -89,18 +89,19 @@
 
 <!-- TABS -->
 <div class="tabs-container">
-  <button class="tab-btn active" onclick="showTab('groups', this)">Group Stage</button>
+  <button class="tab-btn active" onclick="showTab('bracket', this)">Knockout Bracket</button>
   <button class="tab-btn" onclick="showTab('schedule', this)">Full Schedule</button>
-  <button class="tab-btn" onclick="showTab('bracket', this)">Knockout Bracket</button>
+  <button class="tab-btn" onclick="showTab('groups', this)">Group Stage</button>
 </div>
 
 <!-- MAIN -->
 <main class="main">
 
-  <!-- ── GROUPS PANEL ── -->
-  <div class="panel active" id="panel-groups">
-    <p class="section-intro">Click any match to see <strong>live scores</strong> &amp; <strong>where to watch</strong></p>
-    <div class="groups-grid" id="groupsGrid"></div>
+  <!-- ── BRACKET PANEL ── -->
+  <div class="panel active" id="panel-bracket">
+    <div class="bracket-wrapper">
+      <div class="bracket" id="bracketEl"></div>
+    </div>
   </div>
 
   <!-- ── SCHEDULE PANEL ── -->
@@ -109,12 +110,10 @@
     <div id="scheduleList"></div>
   </div>
 
-  <!-- ── BRACKET PANEL ── -->
-  <div class="panel" id="panel-bracket">
-    <p class="section-intro">Knockout stage begins <strong>June 28</strong> — bracket updates as group stage results come in</p>
-    <div class="bracket-wrapper">
-      <div class="bracket" id="bracketEl"></div>
-    </div>
+  <!-- ── GROUPS PANEL ── -->
+  <div class="panel" id="panel-groups">
+    <p class="section-intro">Group stage complete — final standings below</p>
+    <div class="groups-grid" id="groupsGrid"></div>
   </div>
 
 </main>

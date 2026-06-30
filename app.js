@@ -4,7 +4,8 @@ let liveScores = {}; // espnEventId or teamKey -> score info
 let matchesById = {}; // id -> match object
 let currentModalId = null;
 let refreshTimer = null;
-let pastExpanded = false; // Full Schedule: whether finished games are revealed
+let pastExpanded = false; // Full Schedule: whether finished knockout games are revealed
+let groupExpanded = false; // Full Schedule: whether the finished group stage is revealed
 let lastRenderSig = null;  // skip redundant full re-renders (preserves scroll/interaction)
 
 // Tournament data window + persistence
@@ -245,9 +246,14 @@ function findResult(code1, code2, name1, name2, kickoffUTC) {
     const scoreByCode = {};
     scoreByCode[ca] = parseInt(a.score ?? '-1');
     scoreByCode[cb] = parseInt(b.score ?? '-1');
+    // ESPN exposes penalty shootout tallies as `shootoutScore` on each
+    // competitor when a knockout game was decided on penalties.
+    const shootoutByCode = {};
+    const sa = parseInt(a.shootoutScore ?? '-1'), sb = parseInt(b.shootoutScore ?? '-1');
+    if (sa >= 0 || sb >= 0) { shootoutByCode[ca] = Math.max(sa, 0); shootoutByCode[cb] = Math.max(sb, 0); }
     let winnerCode = null;
     if (a.winner) winnerCode = ca; else if (b.winner) winnerCode = cb;
-    return { status, scoreByCode, winnerCode };
+    return { status, scoreByCode, shootoutByCode, winnerCode };
   }
   return null;
 }
@@ -306,10 +312,17 @@ function computeQualification() {
   QUAL = { best8: new Set(best8), groupStageDone };
 
   // Assign thirds to slots (only meaningful once the group stage is decided).
+  // Prefer FIFA's official slotting for the actual qualifying set; otherwise
+  // fall back to any valid bijection via backtracking.
   const thirdAssign = {};
   if (groupStageDone) {
-    const res = assignThirdSlots(best8, THIRD_SLOTS.map(s => s.allowed));
-    THIRD_SLOTS.forEach((s, i) => { thirdAssign[s.id] = res[i]; });
+    const official = THIRD_ALLOCATION[best8.slice().sort().join('')];
+    if (official) {
+      Object.assign(thirdAssign, official);
+    } else {
+      const res = assignThirdSlots(best8, THIRD_SLOTS.map(s => s.allowed));
+      THIRD_SLOTS.forEach((s, i) => { thirdAssign[s.id] = res[i]; });
+    }
   }
 
   // Resolve every knockout match in round order (R32 → Final).
@@ -318,6 +331,7 @@ function computeQualification() {
   KNOCKOUT_ROUNDS.forEach(r => r.matches.forEach(m => {
     const f = FEEDS[m.id];
     m.home = m.away = null; m.homeScore = m.awayScore = null;
+    m.homePens = m.awayPens = null;
     m.status = 'upcoming'; m.winnerCode = null;
     // Real kickoff instant so knockout games sort into the full schedule.
     // ponytail: hardcode EDT (-04:00) — every WC2026 knockout date is in summer.
@@ -337,7 +351,11 @@ function computeQualification() {
       m.awayScore = r2.scoreByCode[m.away.code] >= 0 ? r2.scoreByCode[m.away.code] : null;
     }
     if (r2.status === 'final' && r2.winnerCode) m.winnerCode = r2.winnerCode;
-    koResultsCache[m.id] = { status: r2.status, scoreByCode: r2.scoreByCode, winnerCode: r2.winnerCode };
+    if (r2.shootoutByCode && (r2.shootoutByCode[m.home.code] != null || r2.shootoutByCode[m.away.code] != null)) {
+      m.homePens = r2.shootoutByCode[m.home.code] ?? 0;
+      m.awayPens = r2.shootoutByCode[m.away.code] ?? 0;
+    }
+    koResultsCache[m.id] = { status: r2.status, scoreByCode: r2.scoreByCode, shootoutByCode: r2.shootoutByCode, winnerCode: r2.winnerCode };
   }));
 }
 
@@ -380,7 +398,8 @@ function scoreDisplay(m) {
     return { text: `${m.homeScore} – ${m.awayScore}`, cls: 'live-score' };
   }
   if (m.status === 'final' && m.homeScore !== null) {
-    return { text: `${m.homeScore} – ${m.awayScore}`, cls: 'final' };
+    const pens = m.homePens != null ? ` (${m.homePens}-${m.awayPens}p)` : '';
+    return { text: `${m.homeScore} – ${m.awayScore}${pens}`, cls: 'final' };
   }
   return { text: formatTime(m.kickoffUTC, userTZ), cls: 'upcoming' };
 }
@@ -556,42 +575,58 @@ function togglePastSchedule() {
   pastExpanded = !pastExpanded;
   renderSchedule();
 }
+function toggleGroupSchedule() {
+  groupExpanded = !groupExpanded;
+  renderSchedule();
+}
 
 function renderSchedule() {
   const container = document.getElementById('scheduleList');
   const now = Date.now();
 
-  // Partition into finished vs. (live + upcoming). Live and future render
-  // together so the in-progress game sits at the top of the default view.
-  // Group-stage matches plus every knockout game that now has a kickoff instant,
-  // so the full schedule spans group + bracket days.
-  const all = Object.values(matchesById);
-  KNOCKOUT_ROUNDS.forEach(r => r.matches.forEach(m => { if (m.kickoffUTC) all.push(m); }));
+  // The group stage is over, so it's collapsed behind its own button at the
+  // bottom; the knockout schedule is the default focus.
+  // ponytail: collapse ALL group games unconditionally — safe because the group
+  // stage has ended. Revisit only if this page is reused mid-group-stage.
+  const groupGames = Object.values(matchesById);
+  const ko = [];
+  KNOCKOUT_ROUNDS.forEach(r => r.matches.forEach(m => { if (m.kickoffUTC) ko.push(m); }));
 
-  const past = [], current = [];
-  all.forEach(m => {
-    (matchPhase(m, now) === 'past' ? past : current).push(m);
-  });
+  // Knockout: finished games collapsed, live + upcoming shown by default.
+  const koPast = [], koCurrent = [];
+  ko.forEach(m => (matchPhase(m, now) === 'past' ? koPast : koCurrent).push(m));
 
   let html = '';
 
-  // Collapsed past-games section pinned to the top — scroll up to read it.
-  if (past.length) {
+  // Finished knockout games, collapsed at the top — scroll up to read them.
+  if (koPast.length) {
     html += `
       <div class="past-toggle-bar ${pastExpanded?'open':''}" onclick="togglePastSchedule()">
         <span class="ptb-arrow">▸</span>
-        <span class="ptb-label">Past games (${past.length})</span>
+        <span class="ptb-label">Past knockout games (${koPast.length})</span>
       </div>
       <div class="past-schedule ${pastExpanded?'open':''}">
-        ${pastExpanded ? buildDayGroups(past, now) : ''}
+        ${pastExpanded ? buildDayGroups(koPast, now) : ''}
       </div>`;
   }
 
-  // Default visible list: in-progress game first, then upcoming matches.
-  if (current.length) {
-    html += buildDayGroups(current, now);
+  // Default visible list: live knockout game first, then upcoming knockout.
+  if (koCurrent.length) {
+    html += buildDayGroups(koCurrent, now);
   } else {
-    html += `<p class="schedule-empty">All matches complete — see past games above.</p>`;
+    html += `<p class="schedule-empty">All knockout matches complete.</p>`;
+  }
+
+  // Group stage — finished; collapsed behind its own button.
+  if (groupGames.length) {
+    html += `
+      <div class="past-toggle-bar ${groupExpanded?'open':''}" onclick="toggleGroupSchedule()">
+        <span class="ptb-arrow">▸</span>
+        <span class="ptb-label">Group stage games (${groupGames.length})</span>
+      </div>
+      <div class="past-schedule ${groupExpanded?'open':''}">
+        ${groupExpanded ? buildDayGroups(groupGames, now) : ''}
+      </div>`;
   }
 
   container.innerHTML = html;
@@ -606,6 +641,25 @@ function feedLabel(spec) {
   if (spec.g3) return `3rd · ${spec.g3.join('/')}`;
   return 'TBD';
 }
+// Lay the bracket out as a wallchart: order each round so the two matches that
+// feed the same next match are vertically adjacent (a post-order walk of the
+// feed tree from the Final back to R32). Returns one ordered array per round,
+// aligned to KNOCKOUT_ROUNDS' order [R32, R16, QF, SF, FIN].
+function bracketDisplayOrder() {
+  const order = { R32:[], R16:[], QF:[], SF:[], FIN:[] };
+  const code = id => id.startsWith('R32') ? 'R32' : id.startsWith('R16') ? 'R16'
+        : id.startsWith('QF') ? 'QF' : id.startsWith('SF') ? 'SF' : 'FIN';
+  const byId = {};
+  KNOCKOUT_ROUNDS.forEach(r => r.matches.forEach(m => { byId[m.id] = m; }));
+  (function walk(id) {
+    const f = FEEDS[id] || {};
+    if (f.home && f.home.w) walk(f.home.w);
+    if (f.away && f.away.w) walk(f.away.w);
+    if (byId[id]) order[code(id)].push(byId[id]);
+  })('FIN');
+  return [order.R32, order.R16, order.QF, order.SF, order.FIN];
+}
+
 function renderBracket() {
   const container = document.getElementById('bracketEl');
   // The horizontal scroll lives on the wrapper; replacing the inner content
@@ -614,14 +668,21 @@ function renderBracket() {
   const savedScrollLeft = wrap ? wrap.scrollLeft : 0;
   container.innerHTML = '';
 
-  KNOCKOUT_ROUNDS.forEach(round => {
+  const ordered = bracketDisplayOrder();
+
+  KNOCKOUT_ROUNDS.forEach((round, ri) => {
     const col = document.createElement('div');
     col.className = 'bracket-round';
     const isFinal = round.label.includes('FINAL');
 
     col.innerHTML = `<div class="bracket-round-label">${round.label}</div>`;
+    const body = document.createElement('div');
+    body.className = 'bracket-body';
 
-    round.matches.forEach(m => {
+    ordered[ri].forEach(m => {
+      const cell = document.createElement('div');
+      cell.className = 'bracket-cell';
+
       const mc = document.createElement('div');
       mc.className = `bracket-match${isFinal?' final-card':''}${m.status==='live'?' is-live':''}`;
       mc.onclick = () => openKnockoutModal(m);
@@ -631,15 +692,20 @@ function renderBracket() {
       const awayLabel = m.away ? `${m.away.flag} ${m.away.name}` : feedLabel(f.away);
       const homeWin = m.winnerCode && m.home && m.home.code === m.winnerCode;
       const awayWin = m.winnerCode && m.away && m.away.code === m.winnerCode;
+      // Penalty tally shown beside the score, e.g. "1 (4)" — only when a shootout happened.
+      const homePen = m.homePens != null ? ` <span class="bt-pens">(${m.homePens})</span>` : '';
+      const awayPen = m.awayPens != null ? ` <span class="bt-pens">(${m.awayPens})</span>` : '';
 
       mc.innerHTML = `
-        <div class="bracket-date-line">${m.status==='live'?'<span class="live-pip"></span>':''}${m.date} · ${m.time}</div>
-        <div class="bracket-team ${!m.home?'tbd':''}${homeWin?' winner':''}">${homeLabel}<span class="bt-score">${m.homeScore ?? ''}</span></div>
-        <div class="bracket-team ${!m.away?'tbd':''}${awayWin?' winner':''}">${awayLabel}<span class="bt-score">${m.awayScore ?? ''}</span></div>
+        <div class="bracket-date-line">${m.status==='live'?'<span class="live-pip"></span>':''}${m.date} · ${m.time}${m.homePens!=null?' · pens':''}</div>
+        <div class="bracket-team ${!m.home?'tbd':''}${homeWin?' winner':''}">${homeLabel}<span class="bt-score">${m.homeScore ?? ''}${homePen}</span></div>
+        <div class="bracket-team ${!m.away?'tbd':''}${awayWin?' winner':''}">${awayLabel}<span class="bt-score">${m.awayScore ?? ''}${awayPen}</span></div>
       `;
-      col.appendChild(mc);
+      cell.appendChild(mc);
+      body.appendChild(cell);
     });
 
+    col.appendChild(body);
     container.appendChild(col);
   });
 
@@ -884,7 +950,8 @@ function openKnockoutModal(m) {
 
   const scoreEl = document.getElementById('mScore');
   if (m.status !== 'upcoming' && m.homeScore != null) {
-    scoreEl.textContent = `${m.homeScore} – ${m.awayScore}`;
+    const pens = m.homePens != null ? ` (${m.homePens}–${m.awayPens} pens)` : '';
+    scoreEl.textContent = `${m.homeScore} – ${m.awayScore}${pens}`;
     scoreEl.className = `modal-score-display ${m.status === 'live' ? 'live-score' : 'final'}`;
   } else {
     scoreEl.textContent = 'VS';
@@ -892,7 +959,7 @@ function openKnockoutModal(m) {
   }
 
   const badge = document.getElementById('mStatusBadge');
-  badge.textContent = m.status === 'final' ? 'Full Time'
+  badge.textContent = m.status === 'final' ? (m.homePens != null ? 'Full Time · Pens' : 'Full Time')
     : m.status === 'live' ? (m.minute || 'LIVE')
     : `${m.date} · ${m.time}`;
   badge.className = `modal-status-badge ${m.status === 'upcoming' ? 'upcoming' : m.status}`;
@@ -984,14 +1051,14 @@ function updateCountdown() {
 // rebuild so the user's bracket scroll, hover, and taps aren't interrupted.
 function renderSignature() {
   const now = Date.now();
-  const parts = [userTZ, pastExpanded ? '1' : '0'];
+  const parts = [userTZ, pastExpanded ? '1' : '0', groupExpanded ? '1' : '0'];
   Object.values(matchesById)
     .sort((a, b) => (a.id < b.id ? -1 : 1))
     .forEach(m => parts.push(
       `${m.id}:${m.status}:${m.homeScore}:${m.awayScore}:${m.minute}:${matchPhase(m, now)}`
     ));
   KNOCKOUT_ROUNDS.forEach(r => r.matches.forEach(m => parts.push(
-    `${m.id}:${m.home?.code || ''}:${m.away?.code || ''}:${m.status}:${m.homeScore}:${m.awayScore}:${m.winnerCode || ''}`
+    `${m.id}:${m.home?.code || ''}:${m.away?.code || ''}:${m.status}:${m.homeScore}:${m.awayScore}:${m.homePens}:${m.awayPens}:${m.winnerCode || ''}`
   )));
   parts.push('q:' + [...QUAL.best8].sort().join(',') + ':' + (QUAL.groupStageDone ? '1' : '0'));
   return parts.join('|');

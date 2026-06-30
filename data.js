@@ -333,3 +333,19 @@ const THIRD_SLOTS = [
   { id:'R32M14', allowed:['D','E','I','J','L'] }, // M87
   { id:'R32M15', allowed:['E','F','G','I','J'] }, // M85
 ];
+
+// FIFA uses a FIXED published table mapping the SET of 8 groups whose third
+// qualifies → which R32 slot each plays (multiple valid bijections exist, but
+// only one is official). Backtracking over THIRD_SLOTS finds *a* valid mapping,
+// not necessarily FIFA's. Override with the official slotting for known sets.
+// Key: the 8 qualifying group letters, sorted and joined. Value: slot → group.
+// ponytail: only the actual 2026 qualifying set is encoded (group stage is
+// over, so it's locked); any other set falls back to backtracking. Add a row
+// here if the set ever changes.
+const THIRD_ALLOCATION = {
+  // Qualifying thirds B,D,E,F,I,J,K,L → official FIFA 2026 R32 slotting
+  // (verified against the published Round of 32 bracket: Germany–Paraguay,
+  //  France–Sweden, USA–Bosnia, Belgium–Senegal, Mexico–Ecuador,
+  //  England–Congo DR, Switzerland–Algeria, Colombia–Ghana).
+  BDEFIJKL: { R32M4:'D', R32M6:'F', R32M7:'E', R32M8:'K', R32M11:'I', R32M12:'B', R32M14:'L', R32M15:'J' },
+};
