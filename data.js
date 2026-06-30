@@ -301,20 +301,23 @@ const FEEDS = {
   R32M14: { home:{gw:'K'}, away:{g3:['D','E','I','J','L']} }, // M87
   R32M15: { home:{gw:'B'}, away:{g3:['E','F','G','I','J']} }, // M85
   R32M16: { home:{gw:'J'}, away:{gr:'H'} },                   // M86
-  // Round of 16 — winners of the two R32 slots that share each R16 date/venue.
-  R16M1: { home:{w:'R32M5'},  away:{w:'R32M1'}  }, // M90  W75 v W76
-  R16M2: { home:{w:'R32M3'},  away:{w:'R32M4'}  }, // M89  W73 v W74
-  R16M3: { home:{w:'R32M6'},  away:{w:'R32M2'}  }, // M91  W77 v W78
-  R16M4: { home:{w:'R32M7'},  away:{w:'R32M8'}  }, // M92  W79 v W80
-  R16M5: { home:{w:'R32M12'}, away:{w:'R32M11'} }, // M93  W81 v W82
-  R16M6: { home:{w:'R32M10'}, away:{w:'R32M9'}  }, // M94  W83 v W84
-  R16M7: { home:{w:'R32M15'}, away:{w:'R32M16'} }, // M95  W85 v W86
-  R16M8: { home:{w:'R32M14'}, away:{w:'R32M13'} }, // M96  W87 v W88
-  // Quarterfinals
-  QF1: { home:{w:'R16M2'}, away:{w:'R16M1'} }, // M97  W89 v W90
-  QF2: { home:{w:'R16M3'}, away:{w:'R16M4'} }, // M98  W91 v W92
-  QF3: { home:{w:'R16M5'}, away:{w:'R16M6'} }, // M99  W93 v W94
-  QF4: { home:{w:'R16M7'}, away:{w:'R16M8'} }, // M100 W95 v W96
+  // ── Round of 16 — wiring verified against ESPN's live FIFA.World bracket
+  // (each R16 game's two Round-of-32-winner feeds), mapped by host venue.
+  // The 2026 bracket is NOT the naive "W73 v W74 / W75 v W76" pairing, so each
+  // slot is wired to the exact R32 slots ESPN reports for that venue. ──
+  R16M1: { home:{w:'R32M3'},  away:{w:'R32M5'}  }, // NRG Houston       W(M73) v W(M75)
+  R16M2: { home:{w:'R32M4'},  away:{w:'R32M6'}  }, // Lincoln Philly    W(M74) v W(M77)
+  R16M3: { home:{w:'R32M1'},  away:{w:'R32M2'}  }, // MetLife NJ        W(M76) v W(M78)
+  R16M4: { home:{w:'R32M7'},  away:{w:'R32M8'}  }, // Estadio Banorte   W(M79) v W(M80)
+  R16M5: { home:{w:'R32M10'}, away:{w:'R32M9'}  }, // AT&T Arlington    W(M83) v W(M84)
+  R16M6: { home:{w:'R32M12'}, away:{w:'R32M11'} }, // Lumen Seattle     W(M81) v W(M82)
+  R16M7: { home:{w:'R32M16'}, away:{w:'R32M13'} }, // Mercedes-Benz     W(M86) v W(M88)
+  R16M8: { home:{w:'R32M15'}, away:{w:'R32M14'} }, // BC Place          W(M85) v W(M87)
+  // ── Quarterfinals — R16 winners per ESPN's bracket, mapped by host venue. ──
+  QF1: { home:{w:'R16M2'}, away:{w:'R16M1'} }, // Gillette Foxborough
+  QF2: { home:{w:'R16M5'}, away:{w:'R16M6'} }, // SoFi Inglewood
+  QF3: { home:{w:'R16M3'}, away:{w:'R16M4'} }, // Hard Rock Miami
+  QF4: { home:{w:'R16M7'}, away:{w:'R16M8'} }, // GEHA Arrowhead KC
   // Semifinals + Final
   SF1: { home:{w:'QF1'}, away:{w:'QF2'} }, // M101
   SF2: { home:{w:'QF3'}, away:{w:'QF4'} }, // M102

@@ -664,6 +664,13 @@ body::before {
 }
 .modal-score-display.live-score { color: var(--red); animation: scoreGlow 2s ease-in-out infinite; }
 .modal-score-display.upcoming { font-size: 1.6rem; color: var(--gray2); }
+.modal-pens {
+  margin-top: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.04em; color: var(--gold);
+  white-space: nowrap;
+}
 
 .modal-status-badge {
   display: inline-block; margin-top: 0.5rem;

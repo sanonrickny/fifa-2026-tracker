@@ -769,6 +769,20 @@ async function fetchOddsForMatch(m) {
       } else {
         processESPNData({ events: espnEventCache[dateStr] });
       }
+      // processESPNData only binds group fixtures (matchesById). Knockout match
+      // objects aren't in there, so bind their espnId here by team identity.
+      if (!m.espnId && m.home && m.away) {
+        const ev = (espnEventCache[dateStr] || []).find(ev => {
+          const cs = ev.competitions?.[0]?.competitors || [];
+          if (cs.length < 2) return false;
+          const [a, b] = cs;
+          const ca = a.team?.abbreviation, cb = b.team?.abbreviation;
+          const na = a.team?.displayName || a.team?.name, nb = b.team?.displayName || b.team?.name;
+          return (sameTeam(m.home, ca, na) && sameTeam(m.away, cb, nb)) ||
+                 (sameTeam(m.home, cb, nb) && sameTeam(m.away, ca, na));
+        });
+        if (ev) m.espnId = ev.id;
+      }
     }
   }
 
@@ -877,6 +891,7 @@ function openModal(matchId) {
   const scoreEl = document.getElementById('mScore');
   scoreEl.textContent = sd.cls === 'live-score' || sd.cls === 'final' ? sd.text : 'VS';
   scoreEl.className = `modal-score-display ${sd.cls}`;
+  document.getElementById('mPens').style.display = 'none'; // group games never go to penalties
 
   const badge = document.getElementById('mStatusBadge');
   if (m.status === 'live') {
@@ -950,16 +965,25 @@ function openKnockoutModal(m) {
 
   const scoreEl = document.getElementById('mScore');
   if (m.status !== 'upcoming' && m.homeScore != null) {
-    const pens = m.homePens != null ? ` (${m.homePens}–${m.awayPens} pens)` : '';
-    scoreEl.textContent = `${m.homeScore} – ${m.awayScore}${pens}`;
+    scoreEl.textContent = `${m.homeScore} – ${m.awayScore}`;
     scoreEl.className = `modal-score-display ${m.status === 'live' ? 'live-score' : 'final'}`;
   } else {
     scoreEl.textContent = 'VS';
     scoreEl.className = 'modal-score-display upcoming';
   }
 
+  // Penalty shootout result on its own line below the score, so it never
+  // overflows the score column.
+  const pensEl = document.getElementById('mPens');
+  if (m.homePens != null) {
+    pensEl.textContent = `Penalties ${m.homePens}–${m.awayPens}`;
+    pensEl.style.display = 'block';
+  } else {
+    pensEl.style.display = 'none';
+  }
+
   const badge = document.getElementById('mStatusBadge');
-  badge.textContent = m.status === 'final' ? (m.homePens != null ? 'Full Time · Pens' : 'Full Time')
+  badge.textContent = m.status === 'final' ? 'Full Time'
     : m.status === 'live' ? (m.minute || 'LIVE')
     : `${m.date} · ${m.time}`;
   badge.className = `modal-status-badge ${m.status === 'upcoming' ? 'upcoming' : m.status}`;
@@ -989,10 +1013,18 @@ function openKnockoutModal(m) {
     </a>
   `).join('');
 
-  // Knockout: no odds yet, show placeholder
-  document.getElementById('probContent').innerHTML = `<div class="prob-error">Odds available once teams are confirmed</div>`;
+  // Win probability: fetch real odds once both teams are confirmed (same path
+  // as group games); until then there's nothing to price.
   document.getElementById('probSource').textContent = '';
   document.getElementById('probLiveDot').style.display = 'none';
+  if (m.home && m.away) {
+    document.getElementById('probContent').innerHTML = '<div class="prob-loading">Loading odds…</div>';
+    fetchOddsForMatch(m).then(odds => {
+      if (currentModalId === m.id) renderProbability(m, odds);
+    });
+  } else {
+    document.getElementById('probContent').innerHTML = `<div class="prob-error">Odds available once teams are confirmed</div>`;
+  }
 
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
