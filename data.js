@@ -244,7 +244,7 @@ const KNOCKOUT_ROUNDS = [
     { id:'R16M3', home:null, away:null, date:'Jul 5', time:'4:00 PM ET', venue:"MetLife Stadium, East Rutherford NJ" },
     { id:'R16M4', home:null, away:null, date:'Jul 5', time:'8:00 PM ET', venue:"Estadio Banorte, Mexico City MX" },
     { id:'R16M5', home:null, away:null, date:'Jul 6', time:'3:00 PM ET', venue:"AT&T Stadium, Arlington TX" },
-    { id:'R16M6', home:null, away:null, date:'Jul 6', time:'8:00 PM ET', venue:"Lumen Field, Seattle WA" },
+    { id:'R16M6', home:null, away:null, date:'Jul 6', time:'5:00 PM ET', venue:"Lumen Field, Seattle WA" },
     { id:'R16M7', home:null, away:null, date:'Jul 7', time:'12:00 PM ET', venue:"Mercedes-Benz Stadium, Atlanta GA" },
     { id:'R16M8', home:null, away:null, date:'Jul 7', time:'4:00 PM ET', venue:"BC Place, Vancouver CA" },
     ]
@@ -283,52 +283,53 @@ const KNOCKOUT_ROUNDS = [
 //   {w:'R32M1'} winner of an earlier knockout match
 // R32 display order is arranged so each adjacent pair feeds the same R16 match.
 const FEEDS = {
-  // Round of 32
-  R32M1:  { home:{gw:'E'}, away:{g3:['A','B','C','D','F']} }, // FIFA M74
-  R32M2:  { home:{gw:'I'}, away:{g3:['C','D','F','G','H']} }, // M77
+  // Round of 32 — slot id ↔ FIFA match #. Each slot's wiring matches the
+  // date/time/venue stamped on that SAME slot in KNOCKOUT_ROUNDS above.
+  R32M1:  { home:{gw:'C'}, away:{gr:'F'} },                   // M76
+  R32M2:  { home:{gr:'E'}, away:{gr:'I'} },                   // M78
   R32M3:  { home:{gr:'A'}, away:{gr:'B'} },                   // M73
-  R32M4:  { home:{gw:'F'}, away:{gr:'C'} },                   // M75
-  R32M5:  { home:{gw:'C'}, away:{gr:'F'} },                   // M76
-  R32M6:  { home:{gr:'E'}, away:{gr:'I'} },                   // M78
+  R32M4:  { home:{gw:'E'}, away:{g3:['A','B','C','D','F']} }, // M74
+  R32M5:  { home:{gw:'F'}, away:{gr:'C'} },                   // M75
+  R32M6:  { home:{gw:'I'}, away:{g3:['C','D','F','G','H']} }, // M77
   R32M7:  { home:{gw:'A'}, away:{g3:['C','E','F','H','I']} }, // M79
   R32M8:  { home:{gw:'L'}, away:{g3:['E','H','I','J','K']} }, // M80
-  R32M9:  { home:{gr:'K'}, away:{gr:'L'} },                   // M83
-  R32M10: { home:{gw:'H'}, away:{gr:'J'} },                   // M84
-  R32M11: { home:{gw:'D'}, away:{g3:['B','E','F','I','J']} }, // M81
-  R32M12: { home:{gw:'G'}, away:{g3:['A','E','H','I','J']} }, // M82
-  R32M13: { home:{gw:'J'}, away:{gr:'H'} },                   // M86
-  R32M14: { home:{gr:'D'}, away:{gr:'G'} },                   // M88
+  R32M9:  { home:{gw:'H'}, away:{gr:'J'} },                   // M84
+  R32M10: { home:{gr:'K'}, away:{gr:'L'} },                   // M83
+  R32M11: { home:{gw:'G'}, away:{g3:['A','E','H','I','J']} }, // M82
+  R32M12: { home:{gw:'D'}, away:{g3:['B','E','F','I','J']} }, // M81
+  R32M13: { home:{gr:'D'}, away:{gr:'G'} },                   // M88
+  R32M14: { home:{gw:'K'}, away:{g3:['D','E','I','J','L']} }, // M87
   R32M15: { home:{gw:'B'}, away:{g3:['E','F','G','I','J']} }, // M85
-  R32M16: { home:{gw:'K'}, away:{g3:['D','E','I','J','L']} }, // M87
-  // Round of 16
-  R16M1: { home:{w:'R32M1'},  away:{w:'R32M2'}  },
-  R16M2: { home:{w:'R32M3'},  away:{w:'R32M4'}  },
-  R16M3: { home:{w:'R32M5'},  away:{w:'R32M6'}  },
-  R16M4: { home:{w:'R32M7'},  away:{w:'R32M8'}  },
-  R16M5: { home:{w:'R32M9'},  away:{w:'R32M10'} },
-  R16M6: { home:{w:'R32M11'}, away:{w:'R32M12'} },
-  R16M7: { home:{w:'R32M13'}, away:{w:'R32M14'} },
-  R16M8: { home:{w:'R32M15'}, away:{w:'R32M16'} },
+  R32M16: { home:{gw:'J'}, away:{gr:'H'} },                   // M86
+  // Round of 16 — winners of the two R32 slots that share each R16 date/venue.
+  R16M1: { home:{w:'R32M5'},  away:{w:'R32M1'}  }, // M90  W75 v W76
+  R16M2: { home:{w:'R32M3'},  away:{w:'R32M4'}  }, // M89  W73 v W74
+  R16M3: { home:{w:'R32M6'},  away:{w:'R32M2'}  }, // M91  W77 v W78
+  R16M4: { home:{w:'R32M7'},  away:{w:'R32M8'}  }, // M92  W79 v W80
+  R16M5: { home:{w:'R32M12'}, away:{w:'R32M11'} }, // M93  W81 v W82
+  R16M6: { home:{w:'R32M10'}, away:{w:'R32M9'}  }, // M94  W83 v W84
+  R16M7: { home:{w:'R32M15'}, away:{w:'R32M16'} }, // M95  W85 v W86
+  R16M8: { home:{w:'R32M14'}, away:{w:'R32M13'} }, // M96  W87 v W88
   // Quarterfinals
-  QF1: { home:{w:'R16M1'}, away:{w:'R16M2'} },
-  QF2: { home:{w:'R16M5'}, away:{w:'R16M6'} },
-  QF3: { home:{w:'R16M3'}, away:{w:'R16M4'} },
-  QF4: { home:{w:'R16M7'}, away:{w:'R16M8'} },
+  QF1: { home:{w:'R16M2'}, away:{w:'R16M1'} }, // M97  W89 v W90
+  QF2: { home:{w:'R16M3'}, away:{w:'R16M4'} }, // M98  W91 v W92
+  QF3: { home:{w:'R16M5'}, away:{w:'R16M6'} }, // M99  W93 v W94
+  QF4: { home:{w:'R16M7'}, away:{w:'R16M8'} }, // M100 W95 v W96
   // Semifinals + Final
-  SF1: { home:{w:'QF1'}, away:{w:'QF2'} },
-  SF2: { home:{w:'QF3'}, away:{w:'QF4'} },
-  FIN: { home:{w:'SF1'}, away:{w:'SF2'} },
+  SF1: { home:{w:'QF1'}, away:{w:'QF2'} }, // M101
+  SF2: { home:{w:'QF3'}, away:{w:'QF4'} }, // M102
+  FIN: { home:{w:'SF1'}, away:{w:'SF2'} }, // M104
 };
 
 // The 8 best-third-place R32 slots (the side carrying a {g3} feed) and their
 // FIFA-allowed source groups. Used to assign qualifying thirds to slots.
 const THIRD_SLOTS = [
-  { id:'R32M1',  allowed:['A','B','C','D','F'] },
-  { id:'R32M2',  allowed:['C','D','F','G','H'] },
-  { id:'R32M7',  allowed:['C','E','F','H','I'] },
-  { id:'R32M8',  allowed:['E','H','I','J','K'] },
-  { id:'R32M11', allowed:['B','E','F','I','J'] },
-  { id:'R32M12', allowed:['A','E','H','I','J'] },
-  { id:'R32M15', allowed:['E','F','G','I','J'] },
-  { id:'R32M16', allowed:['D','E','I','J','L'] },
+  { id:'R32M4',  allowed:['A','B','C','D','F'] }, // M74
+  { id:'R32M6',  allowed:['C','D','F','G','H'] }, // M77
+  { id:'R32M7',  allowed:['C','E','F','H','I'] }, // M79
+  { id:'R32M8',  allowed:['E','H','I','J','K'] }, // M80
+  { id:'R32M11', allowed:['A','E','H','I','J'] }, // M82
+  { id:'R32M12', allowed:['B','E','F','I','J'] }, // M81
+  { id:'R32M14', allowed:['D','E','I','J','L'] }, // M87
+  { id:'R32M15', allowed:['E','F','G','I','J'] }, // M85
 ];
