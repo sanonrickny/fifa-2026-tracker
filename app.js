@@ -253,7 +253,8 @@ function findResult(code1, code2, name1, name2, kickoffUTC) {
     if (sa >= 0 || sb >= 0) { shootoutByCode[ca] = Math.max(sa, 0); shootoutByCode[cb] = Math.max(sb, 0); }
     let winnerCode = null;
     if (a.winner) winnerCode = ca; else if (b.winner) winnerCode = cb;
-    return { status, scoreByCode, shootoutByCode, winnerCode };
+    const minute = state === 'in' ? (ev.status?.displayClock || null) : null;
+    return { status, scoreByCode, shootoutByCode, winnerCode, minute };
   }
   return null;
 }
@@ -346,6 +347,7 @@ function computeQualification() {
     if (!r2 && koResultsCache[m.id]) r2 = koResultsCache[m.id]; // offline fallback
     if (!r2) return;
     m.status = r2.status;
+    m.minute = r2.minute || null;
     if (r2.status !== 'upcoming') {
       m.homeScore = r2.scoreByCode[m.home.code] >= 0 ? r2.scoreByCode[m.home.code] : null;
       m.awayScore = r2.scoreByCode[m.away.code] >= 0 ? r2.scoreByCode[m.away.code] : null;
@@ -1108,8 +1110,11 @@ function renderAll() {
 
 // ─── LIVE STRIP ───────────────────────────────────────────────────────────────
 function getLiveMatches() {
+  const ko = [];
+  KNOCKOUT_ROUNDS.forEach(r => r.matches.forEach(m => { if (m.status === 'live') ko.push(m); }));
   return Object.values(matchesById)
     .filter(m => m.status === 'live')
+    .concat(ko)
     .sort((a, b) => a.kickoffUTC - b.kickoffUTC);
 }
 
@@ -1148,7 +1153,9 @@ function renderLiveStrip() {
   }).join('');
   row.innerHTML = `<div class="live-strip">${cards}</div>`;
   row.querySelectorAll('.live-match-card').forEach(card => {
-    card.addEventListener('click', () => openModal(card.dataset.matchId));
+    const id = card.dataset.matchId;
+    const koMatch = knockoutMatchById(id);
+    card.addEventListener('click', () => koMatch ? openKnockoutModal(koMatch) : openModal(id));
   });
 }
 
