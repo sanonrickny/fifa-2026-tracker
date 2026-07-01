@@ -215,7 +215,6 @@ const RAW_MATCHES = [
 const KNOCKOUT_ROUNDS = [
   {
     label: 'Round of 32',
-    dates: ['Jun 28 – Jul 4'],
     matches: [
     { id:'R32M1', home:null, away:null, date:'Jun 29', time:'1:00 PM ET', venue:"NRG Stadium, Houston TX" },
     { id:'R32M2', home:null, away:null, date:'Jun 30', time:'1:00 PM ET', venue:"AT&T Stadium, Arlington TX" },
@@ -237,7 +236,6 @@ const KNOCKOUT_ROUNDS = [
   },
   {
     label: 'Round of 16',
-    dates: ['Jul 4 – 7'],
     matches: [
     { id:'R16M1', home:null, away:null, date:'Jul 4', time:'1:00 PM ET', venue:"NRG Stadium, Houston TX" },
     { id:'R16M2', home:null, away:null, date:'Jul 4', time:'5:00 PM ET', venue:"Lincoln Financial Field, Philadelphia PA" },
@@ -251,7 +249,6 @@ const KNOCKOUT_ROUNDS = [
   },
   {
     label: 'Quarterfinals',
-    dates: ['Jul 9 – 11'],
     matches: [
     { id:'QF1', home:null, away:null, date:'Jul 9', time:'4:00 PM ET', venue:"Gillette Stadium, Foxborough MA" },
     { id:'QF2', home:null, away:null, date:'Jul 10', time:'3:00 PM ET', venue:"SoFi Stadium, Inglewood CA" },
@@ -261,7 +258,6 @@ const KNOCKOUT_ROUNDS = [
   },
   {
     label: 'Semifinals',
-    dates: ['Jul 14 – 15'],
     matches: [
     { id:'SF1', home:null, away:null, date:'Jul 14', time:'3:00 PM ET', venue:"AT&T Stadium, Arlington TX" },
     { id:'SF2', home:null, away:null, date:'Jul 15', time:'3:00 PM ET', venue:"Mercedes-Benz Stadium, Atlanta GA" },
@@ -269,7 +265,6 @@ const KNOCKOUT_ROUNDS = [
   },
   {
     label: '🏆 FINAL',
-    dates: ['Jul 19'],
     matches: [
     { id:'FIN', home:null, away:null, date:'Jul 19', time:'3:00 PM ET', venue:"MetLife Stadium, East Rutherford NJ" },
     ]

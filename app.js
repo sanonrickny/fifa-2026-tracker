@@ -1,6 +1,5 @@
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let userTZ = 'America/New_York';
-let liveScores = {}; // espnEventId or teamKey -> score info
 let matchesById = {}; // id -> match object
 let currentModalId = null;
 let refreshTimer = null;
