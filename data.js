@@ -81,23 +81,23 @@ const GROUPS = {
 const FREE_STREAMS = [
   {
     name: 'Tubi',
-    note: 'Free – select matches (Mexico vs South Africa & USA vs Paraguay)',
+    note: 'Free · select matches',
     icon: '📺',
     badge: 'FREE',
     url: 'https://tubitv.com/live',
     type: 'free'
   },
   {
-    name: 'Over-the-Air Antenna (FOX)',
-    note: 'Free HD broadcast if you have an antenna – most matches on FOX',
+    name: 'Antenna (FOX)',
+    note: 'Free with an antenna · most matches',
     icon: '📡',
     badge: 'FREE',
     url: 'https://www.foxsports.com/soccer/fifa-world-cup',
     type: 'free'
   },
   {
-    name: 'Peacock (Spanish / Telemundo)',
-    note: 'Free with Walmart+ or Instacart – Spanish language coverage',
+    name: 'Peacock (Telemundo)',
+    note: 'Spanish · free with Walmart+',
     icon: '🦚',
     badge: 'FREE*',
     url: 'https://www.peacocktv.com',

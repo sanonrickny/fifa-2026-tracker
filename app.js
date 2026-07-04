@@ -1,5 +1,6 @@
 // ─── STATE ───────────────────────────────────────────────────────────────────
-let userTZ = 'America/New_York';
+// Auto-detect the viewer's timezone — no picker needed.
+let userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
 let matchesById = {}; // id -> match object
 let currentModalId = null;
 let refreshTimer = null;
@@ -63,11 +64,6 @@ function formatDateFull(dateUTC, tz) {
 }
 function getDateKey(dateUTC, tz) {
   return dateUTC.toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
-}
-
-function onTimezoneChange(tz) {
-  userTZ = tz;
-  renderAll();
 }
 
 // ─── ESPN LIVE SCORES ─────────────────────────────────────────────────────────
@@ -203,8 +199,8 @@ function eventNearKickoff(ev, kickoffUTC) {
 }
 
 function updateLiveBadge() {
-  const hasLive = Object.values(matchesById).some(m => m.status === 'live');
-  document.getElementById('liveBadge').style.display = hasLive ? 'flex' : 'none';
+  // Knockout matches live outside matchesById — count both.
+  document.getElementById('liveBadge').style.display = getLiveMatches().length ? 'flex' : 'none';
 }
 
 // ─── QUALIFICATION + BRACKET ENGINE (Approach A) ──────────────────────────────
@@ -461,7 +457,6 @@ function renderGroups() {
             <div class="match-score ${sd.cls}">${sd.text}</div>
             <div class="match-time-info">
               <div class="match-date-str">${formatDate(m.kickoffUTC, userTZ)}</div>
-              <div class="match-broadcaster" style="font-size:0.65rem;color:var(--gold);font-weight:700">${m.broadcaster}</div>
             </div>
           </div>`;
         }).join('')}
@@ -535,13 +530,11 @@ function scheduleCard(m, now) {
     <div class="smc-group-badge">${isKO ? koBadge(m.id) : m.group}</div>
     <div class="smc-teams">
       ${teamCell(m.home, f.home)}
-      <div class="smc-vs-score ${sd.cls}">${sd.text}</div>
       ${teamCell(m.away, f.away)}
     </div>
     <div class="smc-right">
-      <div class="smc-time">${formatTime(m.kickoffUTC, userTZ)}</div>
+      <div class="smc-vs-score ${sd.cls}">${sd.text}</div>
       <div class="smc-venue">${isKO ? m.venue : m.city}</div>
-      ${isKO ? '' : `<span class="smc-broadcaster">${m.broadcaster}</span>`}
     </div>
   </div>`;
 }
@@ -557,8 +550,8 @@ function buildDayGroups(matches, now) {
   return Object.keys(byDay).sort().map(dk => {
     const dayMatches = byDay[dk].sort((a,b) => a.kickoffUTC - b.kickoffUTC);
     const dayLabel = dk === todayKey
-      ? `Today · ${formatDateFull(dayMatches[0].kickoffUTC, userTZ)}`
-      : formatDateFull(dayMatches[0].kickoffUTC, userTZ);
+      ? 'Today'
+      : formatDate(dayMatches[0].kickoffUTC, userTZ);
     return `
       <div class="schedule-day">
         <div class="schedule-day-header">
@@ -910,14 +903,14 @@ function openModal(matchId) {
     <div class="modal-meta-row"><span class="modal-meta-icon">📅</span><span class="modal-meta-val">${formatDateFull(m.kickoffUTC, userTZ)}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">⏰</span><span class="modal-meta-val">${formatTime(m.kickoffUTC, userTZ)}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">📍</span><span class="modal-meta-val">${m.venue}, ${m.city}</span></div>
-    <div class="modal-meta-row"><span class="modal-meta-icon">📡</span><span class="modal-meta-val">Broadcasting on ${m.broadcaster}</span></div>
+    <div class="modal-meta-row"><span class="modal-meta-icon">📡</span><span class="modal-meta-val">${m.broadcaster}</span></div>
   `;
 
   // Free links
   const freeLinks = [...FREE_STREAMS];
   if (!isTubi) {
     // For non-Tubi matches, add a note that Tubi is only select matches
-    freeLinks[0] = { ...freeLinks[0], note: 'Select matches only (not this game) – check Tubi for availability' };
+    freeLinks[0] = { ...freeLinks[0], note: 'Select matches only · not this game' };
   }
 
   document.getElementById('mFreeLinks').innerHTML = freeLinks.map(s => `
@@ -993,7 +986,7 @@ function openKnockoutModal(m) {
     <div class="modal-meta-row"><span class="modal-meta-icon">📅</span><span class="modal-meta-val">${m.date}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">⏰</span><span class="modal-meta-val">${m.time}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">📍</span><span class="modal-meta-val">${m.venue}</span></div>
-    <div class="modal-meta-row"><span class="modal-meta-icon">📡</span><span class="modal-meta-val">Broadcasting on FOX / FS1</span></div>
+    <div class="modal-meta-row"><span class="modal-meta-icon">📡</span><span class="modal-meta-val">FOX / FS1</span></div>
   `;
 
   document.getElementById('mFreeLinks').innerHTML = FREE_STREAMS.map(s => `
@@ -1056,28 +1049,6 @@ function showTab(name, btn) {
   btn.classList.add('active');
 }
 
-// ─── COUNTDOWN ────────────────────────────────────────────────────────────────
-let countdownTimer = null;
-function updateCountdown() {
-  const kickoff = new Date('2026-06-11T19:00:00Z'); // 3 PM ET = 19:00 UTC
-  const now = new Date();
-  const diff = kickoff - now;
-  if (diff <= 0) {
-    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
-    // renderLiveStrip() owns countdownRow once the tournament has started —
-    // writing here would overwrite the live game cards on every 1s tick.
-    return;
-  }
-  const d = Math.floor(diff / 86400000);
-  const h = Math.floor((diff % 86400000) / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  const s = Math.floor((diff % 60000) / 1000);
-  document.getElementById('cdDays').textContent = String(d).padStart(2,'0');
-  document.getElementById('cdHours').textContent = String(h).padStart(2,'0');
-  document.getElementById('cdMins').textContent = String(m).padStart(2,'0');
-  document.getElementById('cdSecs').textContent = String(s).padStart(2,'0');
-}
-
 // ─── RENDER ALL ───────────────────────────────────────────────────────────────
 // A compact fingerprint of everything the three panels render. When it's
 // unchanged (the common case between 60s polls), skip the full innerHTML
@@ -1117,14 +1088,42 @@ function getLiveMatches() {
     .sort((a, b) => a.kickoffUTC - b.kickoffUTC);
 }
 
+// Earliest match that hasn't kicked off yet (group or knockout).
+function nextUpcoming() {
+  const now = Date.now();
+  const all = Object.values(matchesById)
+    .concat(KNOCKOUT_ROUNDS.flatMap(r => r.matches));
+  return all
+    .filter(m => m.status === 'upcoming' && m.kickoffUTC && !isNaN(m.kickoffUTC) && m.kickoffUTC > now)
+    .sort((a, b) => a.kickoffUTC - b.kickoffUTC)[0] || null;
+}
+
 function renderLiveStrip() {
-  const row = document.getElementById('countdownRow');
+  const row = document.getElementById('nowStrip');
   if (!row) return;
   const live = getLiveMatches();
   if (live.length === 0) {
-    if (Date.now() >= new Date('2026-06-11T19:00:00Z').getTime()) {
-      row.innerHTML = `<div class="tournament-live-banner">⚽ THE TOURNAMENT IS LIVE!</div>`;
-    }
+    // No live game — show the next kickoff instead.
+    const n = nextUpcoming();
+    if (!n) { row.innerHTML = ''; return; }
+    row.innerHTML = `
+      <div class="next-card" data-match-id="${n.id}">
+        <div class="lmc-team">
+          <span class="lmc-flag">${n.home?.flag || '🏳️'}</span>
+          <span class="lmc-name">${n.home?.code || 'TBD'}</span>
+        </div>
+        <div class="lmc-center">
+          <span class="next-chip">Next</span>
+          <span class="next-time">${formatDate(n.kickoffUTC, userTZ)} · ${formatTime(n.kickoffUTC, userTZ)}</span>
+        </div>
+        <div class="lmc-team">
+          <span class="lmc-flag">${n.away?.flag || '🏳️'}</span>
+          <span class="lmc-name">${n.away?.code || 'TBD'}</span>
+        </div>
+      </div>`;
+    const card = row.querySelector('.next-card');
+    const ko = knockoutMatchById(n.id);
+    card.addEventListener('click', () => ko ? openKnockoutModal(ko) : openModal(n.id));
     return;
   }
   const cards = live.map(m => {
@@ -1164,8 +1163,6 @@ loadResults();          // hydrate cached results so the page starts populated
 computeQualification(); // build standings + bracket from cache before first paint
 renderAll();
 updateTimestamp();
-updateCountdown();
-countdownTimer = setInterval(updateCountdown, 1000);
 
 // Fetch scores immediately, then every 60s
 fetchScores();
@@ -1179,29 +1176,5 @@ window.addEventListener('offline', updateTimestamp);
 
 // Keyboard: Escape closes modal
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeModal(); tzPickerWrapper.classList.remove('open'); }
-});
-
-// ─── CUSTOM TIMEZONE PICKER ───────────────────────────────────────────────────
-const tzPickerWrapper = document.getElementById('tzPickerWrapper');
-const tzDisplayEl = document.getElementById('tzDisplay');
-
-tzPickerWrapper.addEventListener('click', function(e) {
-  e.stopPropagation();
-  this.classList.toggle('open');
-});
-
-document.querySelectorAll('.tz-option').forEach(btn => {
-  btn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    document.querySelectorAll('.tz-option').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    tzDisplayEl.textContent = this.dataset.short;
-    tzPickerWrapper.classList.remove('open');
-    onTimezoneChange(this.dataset.tz);
-  });
-});
-
-document.addEventListener('click', function() {
-  tzPickerWrapper.classList.remove('open');
+  if (e.key === 'Escape') closeModal();
 });
