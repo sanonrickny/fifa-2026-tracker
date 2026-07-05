@@ -327,10 +327,14 @@ body {
 
 /* ── BRACKET ── */
 .bracket-wrapper {
-  overflow-x: auto; overscroll-behavior-x: contain;
+  overflow: auto; overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 0.75rem;
   margin: 0 -0.85rem; padding-left: 0.85rem; padding-right: 0.85rem;
+  /* Own vertical scroller so the round labels can stick to its top */
+  max-height: calc(100vh - 52px - var(--tabbar-h) - 1.5rem);
+  max-height: calc(100dvh - 52px - var(--tabbar-h)
+    - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1.5rem);
 }
 .bracket { display: flex; gap: 2.25rem; min-width: max-content; padding: 0.25rem 0.25rem 0.5rem; align-items: stretch; }
 .bracket-round { display: flex; flex-direction: column; min-width: 185px; }
@@ -340,6 +344,9 @@ body {
   letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--muted); text-align: center;
   padding-bottom: 0.5rem;
+  position: sticky; top: 0; z-index: 2;
+  background: var(--bg);
+  margin: 0 -1.125rem; /* cover the 2.25rem column gap so cards don't peek through */
 }
 .bracket-body { display: flex; flex-direction: column; flex: 1; }
 .bracket-cell {
@@ -582,6 +589,7 @@ body {
   .tab-btn svg { width: 17px; height: 17px; }
   .tab-btn.active { background: rgba(255,255,255,0.14); }
   .main { padding: 0 1.25rem 2rem; }
+  .bracket-wrapper { max-height: calc(100vh - 175px); } /* header + docked tabbar */
   .now-strip { max-width: 520px; }
   .live-strip { flex-direction: row; flex-wrap: wrap; justify-content: center; }
   .live-strip .live-match-card { min-width: 320px; }
