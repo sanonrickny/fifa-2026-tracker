@@ -74,7 +74,9 @@ async function fetchScores() {
   try {
     // One range request returns every group + knockout match for the whole
     // tournament (with scores + a winner flag), so completed games always count.
-    const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/FIFA.World/scoreboard?dates=${TOURNAMENT_START}-${TOURNAMENT_END}`;
+    // ESPN caps the response at 100 events by default and the tournament has
+    // 104 — without `limit` the semifinals and final are silently dropped.
+    const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/FIFA.World/scoreboard?dates=${TOURNAMENT_START}-${TOURNAMENT_END}&limit=200`;
     const resp = await fetch(url);
     if (resp.ok) {
       const data = await resp.json();
@@ -329,16 +331,17 @@ function computeQualification() {
     m.home = m.away = null; m.homeScore = m.awayScore = null;
     m.homePens = m.awayPens = null;
     m.status = 'upcoming'; m.winnerCode = null;
-    // Real kickoff instant so knockout games sort into the full schedule.
-    // ponytail: hardcode EDT (-04:00) — every WC2026 knockout date is in summer.
-    m.kickoffUTC = new Date(`${m.date} 2026 ${m.time.replace(/\s*ET$/, '')} GMT-0400`);
+    // Real kickoff instant: prefer ESPN's live schedule (bound by stadium +
+    // nearest date, so TBD games update too); the hardcoded date/time is only
+    // the fallback. ponytail: fallback hardcodes EDT (-04:00) — every WC2026
+    // knockout date is in summer.
+    const fallback = new Date(`${m.date} 2026 ${m.time.replace(/\s*ET$/, '')} GMT-0400`);
+    m.kickoffUTC = koKickoff(m.venue, fallback, espnEvents);
     if (!f) return;
     m.home = resolveFeed(f.home, ranked, complete, thirdAssign, groupStageDone, koById, m.id);
     m.away = resolveFeed(f.away, ranked, complete, thirdAssign, groupStageDone, koById, m.id);
     if (!m.home || !m.away) return;
-    const koDate = m.date ? new Date(`${m.date}, 2026`) : null;
-    let r2 = findResult(m.home.code, m.away.code, m.home.name, m.away.name,
-                        koDate && !isNaN(koDate.getTime()) ? koDate : null);
+    let r2 = findResult(m.home.code, m.away.code, m.home.name, m.away.name, m.kickoffUTC);
     if (!r2 && koResultsCache[m.id]) r2 = koResultsCache[m.id]; // offline fallback
     if (!r2) return;
     m.status = r2.status;
@@ -691,7 +694,7 @@ function renderBracket() {
       const awayPen = m.awayPens != null ? ` <span class="bt-pens">(${m.awayPens})</span>` : '';
 
       mc.innerHTML = `
-        <div class="bracket-date-line">${m.status==='live'?'<span class="live-pip"></span>':''}${m.date} · ${m.time}${m.homePens!=null?' · pens':''}</div>
+        <div class="bracket-date-line">${m.status==='live'?'<span class="live-pip"></span>':''}${formatDate(m.kickoffUTC, userTZ)} · ${formatTime(m.kickoffUTC, userTZ)}${m.homePens!=null?' · pens':''}</div>
         <div class="bracket-team ${!m.home?'tbd':''}${homeWin?' winner':''}">${homeLabel}<span class="bt-score">${m.homeScore ?? ''}${homePen}</span></div>
         <div class="bracket-team ${!m.away?'tbd':''}${awayWin?' winner':''}">${awayLabel}<span class="bt-score">${m.awayScore ?? ''}${awayPen}</span></div>
       `;
@@ -979,12 +982,12 @@ function openKnockoutModal(m) {
   const badge = document.getElementById('mStatusBadge');
   badge.textContent = m.status === 'final' ? 'Full Time'
     : m.status === 'live' ? (m.minute || 'LIVE')
-    : `${m.date} · ${m.time}`;
+    : `${formatDate(m.kickoffUTC, userTZ)} · ${formatTime(m.kickoffUTC, userTZ)}`;
   badge.className = `modal-status-badge ${m.status === 'upcoming' ? 'upcoming' : m.status}`;
 
   document.getElementById('mMeta').innerHTML = `
-    <div class="modal-meta-row"><span class="modal-meta-icon">📅</span><span class="modal-meta-val">${m.date}</span></div>
-    <div class="modal-meta-row"><span class="modal-meta-icon">⏰</span><span class="modal-meta-val">${m.time}</span></div>
+    <div class="modal-meta-row"><span class="modal-meta-icon">📅</span><span class="modal-meta-val">${formatDateFull(m.kickoffUTC, userTZ)}</span></div>
+    <div class="modal-meta-row"><span class="modal-meta-icon">⏰</span><span class="modal-meta-val">${formatTime(m.kickoffUTC, userTZ)}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">📍</span><span class="modal-meta-val">${m.venue}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">📡</span><span class="modal-meta-val">FOX / FS1</span></div>
   `;
@@ -1062,7 +1065,7 @@ function renderSignature() {
       `${m.id}:${m.status}:${m.homeScore}:${m.awayScore}:${m.minute}:${matchPhase(m, now)}`
     ));
   KNOCKOUT_ROUNDS.forEach(r => r.matches.forEach(m => parts.push(
-    `${m.id}:${m.home?.code || ''}:${m.away?.code || ''}:${m.status}:${m.homeScore}:${m.awayScore}:${m.homePens}:${m.awayPens}:${m.winnerCode || ''}`
+    `${m.id}:${m.home?.code || ''}:${m.away?.code || ''}:${m.status}:${m.homeScore}:${m.awayScore}:${m.homePens}:${m.awayPens}:${m.winnerCode || ''}:${m.kickoffUTC ? m.kickoffUTC.getTime() : ''}`
   )));
   parts.push('q:' + [...QUAL.best8].sort().join(',') + ':' + (QUAL.groupStageDone ? '1' : '0'));
   return parts.join('|');

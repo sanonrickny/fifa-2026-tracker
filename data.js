@@ -210,8 +210,9 @@ const RAW_MATCHES = [
   ['L6','L','PAN','ENG','2026-06-27','21:00','MetLife Stadium','East Rutherford, NJ','FOX'],
 ];
 
-// Knockout matches — dates/times/venues verified against the official FIFA
-// World Cup 2026 schedule (ESPN fifa.world feed). Teams resolve from results.
+// Knockout matches — teams resolve from results. `date`/`time` (ET) are only
+// the FALLBACK kickoff: the live one is bound from the ESPN feed each refresh
+// via koKickoff (stadium + nearest date), so reschedules flow in automatically.
 const KNOCKOUT_ROUNDS = [
   {
     label: 'Round of 32',
@@ -222,7 +223,7 @@ const KNOCKOUT_ROUNDS = [
     { id:'R32M4', home:null, away:null, date:'Jun 29', time:'4:30 PM ET', venue:"Gillette Stadium, Foxborough MA" },
     { id:'R32M5', home:null, away:null, date:'Jun 29', time:'9:00 PM ET', venue:"Estadio BBVA, Monterrey MX" },
     { id:'R32M6', home:null, away:null, date:'Jun 30', time:'5:00 PM ET', venue:"MetLife Stadium, East Rutherford NJ" },
-    { id:'R32M7', home:null, away:null, date:'Jun 30', time:'9:00 PM ET', venue:"Estadio Banorte, Mexico City MX" },
+    { id:'R32M7', home:null, away:null, date:'Jun 30', time:'10:00 PM ET', venue:"Estadio Banorte, Mexico City MX" },
     { id:'R32M8', home:null, away:null, date:'Jul 1', time:'12:00 PM ET', venue:"Mercedes-Benz Stadium, Atlanta GA" },
     { id:'R32M9', home:null, away:null, date:'Jul 2', time:'3:00 PM ET', venue:"SoFi Stadium, Inglewood CA" },
     { id:'R32M10', home:null, away:null, date:'Jul 2', time:'7:00 PM ET', venue:"BMO Field, Toronto CA" },
@@ -240,9 +241,9 @@ const KNOCKOUT_ROUNDS = [
     { id:'R16M1', home:null, away:null, date:'Jul 4', time:'1:00 PM ET', venue:"NRG Stadium, Houston TX" },
     { id:'R16M2', home:null, away:null, date:'Jul 4', time:'5:00 PM ET', venue:"Lincoln Financial Field, Philadelphia PA" },
     { id:'R16M3', home:null, away:null, date:'Jul 5', time:'4:00 PM ET', venue:"MetLife Stadium, East Rutherford NJ" },
-    { id:'R16M4', home:null, away:null, date:'Jul 5', time:'8:00 PM ET', venue:"Estadio Banorte, Mexico City MX" },
+    { id:'R16M4', home:null, away:null, date:'Jul 5', time:'9:00 PM ET', venue:"Estadio Banorte, Mexico City MX" },
     { id:'R16M5', home:null, away:null, date:'Jul 6', time:'3:00 PM ET', venue:"AT&T Stadium, Arlington TX" },
-    { id:'R16M6', home:null, away:null, date:'Jul 6', time:'5:00 PM ET', venue:"Lumen Field, Seattle WA" },
+    { id:'R16M6', home:null, away:null, date:'Jul 6', time:'8:00 PM ET', venue:"Lumen Field, Seattle WA" },
     { id:'R16M7', home:null, away:null, date:'Jul 7', time:'12:00 PM ET', venue:"Mercedes-Benz Stadium, Atlanta GA" },
     { id:'R16M8', home:null, away:null, date:'Jul 7', time:'4:00 PM ET', venue:"BC Place, Vancouver CA" },
     ]
@@ -347,3 +348,24 @@ const THIRD_ALLOCATION = {
   //  England–Congo DR, Switzerland–Algeria, Colombia–Ghana).
   BDEFIJKL: { R32M4:'D', R32M6:'F', R32M7:'E', R32M8:'K', R32M11:'I', R32M12:'B', R32M14:'L', R32M15:'J' },
 };
+
+// Live kickoff for a knockout slot. Teams may still be TBD, so bind the slot to
+// an ESPN event by stadium name + nearest kickoff instead of team identity —
+// stadium + nearest-date is unique across the 2026 knockout calendar. Returns
+// the ESPN kickoff when an event at the same stadium sits within tolerance of
+// the hardcoded fallback; otherwise the fallback stands (offline, renamed
+// venue, feed gap — degrades to today's behavior, never worse).
+const KO_BIND_TOLERANCE_MS = 48 * 60 * 60 * 1000;
+function koKickoff(venue, fallback, events) {
+  const stadium = venue.split(',')[0].trim().toLowerCase();
+  let best = null, bestDiff = KO_BIND_TOLERANCE_MS;
+  (events || []).forEach(ev => {
+    const name = ev.competitions?.[0]?.venue?.fullName || '';
+    if (name.trim().toLowerCase() !== stadium) return;
+    const t = new Date(ev.date).getTime();
+    if (!Number.isFinite(t)) return;
+    const diff = Math.abs(t - fallback.getTime());
+    if (diff < bestDiff) { bestDiff = diff; best = t; }
+  });
+  return best != null ? new Date(best) : fallback;
+}

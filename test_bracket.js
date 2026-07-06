@@ -5,9 +5,9 @@
 const fs = require('fs');
 const src = fs.readFileSync(__dirname + '/data.js', 'utf8');
 const ctx = {};
-new Function(src + '\nthis.FEEDS=FEEDS;this.KNOCKOUT_ROUNDS=KNOCKOUT_ROUNDS;this.THIRD_SLOTS=THIRD_SLOTS;')
+new Function(src + '\nthis.FEEDS=FEEDS;this.KNOCKOUT_ROUNDS=KNOCKOUT_ROUNDS;this.THIRD_SLOTS=THIRD_SLOTS;this.koKickoff=koKickoff;')
   .call(ctx);
-const { FEEDS, KNOCKOUT_ROUNDS, THIRD_SLOTS } = ctx;
+const { FEEDS, KNOCKOUT_ROUNDS, THIRD_SLOTS, koKickoff } = ctx;
 
 const ok = (c, m) => { if (!c) { console.error('FAIL:', m); process.exitCode = 1; } };
 
@@ -50,4 +50,23 @@ const r32m1 = KNOCKOUT_ROUNDS[0].matches.find(m => m.id === 'R32M1');
 ok(FEEDS.R32M1.home.gw === 'C', 'R32M1 home should be Winner Group C (Brazil slot, M76)');
 ok(r32m1.time === '1:00 PM ET' && /Houston/.test(r32m1.venue), 'R32M1 should be 1:00 PM ET in Houston');
 
-if (!process.exitCode) console.log('OK: bracket wiring consistent (31 matches, proper tree, chronology, anchors)');
+//   USA–Belgium (R16M6, Lumen Field) kicks off Jul 6, 8:00 PM ET — the slot
+//   whose stale hardcoded time (5:00 PM) motivated live-feed binding.
+const r16m6 = KNOCKOUT_ROUNDS[1].matches.find(m => m.id === 'R16M6');
+ok(r16m6.time === '8:00 PM ET' && /Lumen/.test(r16m6.venue), 'R16M6 fallback should be 8:00 PM ET at Lumen Field');
+
+// koKickoff: an ESPN event at the same stadium within tolerance overrides the
+// fallback (nearest wins); no stadium match → fallback unchanged.
+const fb = new Date('2026-07-06T21:00:00Z');
+const evs = [
+  { date: '2026-07-07T00:00Z', competitions: [{ venue: { fullName: 'Lumen Field' } }] },
+  { date: '2026-07-06T19:00Z', competitions: [{ venue: { fullName: 'AT&T Stadium' } }] },
+];
+ok(koKickoff('Lumen Field, Seattle WA', fb, evs).getTime() === Date.parse('2026-07-07T00:00Z'),
+   'koKickoff should adopt the ESPN kickoff for the bound stadium');
+ok(koKickoff('MetLife Stadium, East Rutherford NJ', fb, evs).getTime() === fb.getTime(),
+   'koKickoff should keep the fallback when no stadium binds');
+ok(koKickoff('Lumen Field, Seattle WA', new Date('2026-07-12T00:00Z'), evs).getTime() === Date.parse('2026-07-12T00:00Z'),
+   'koKickoff should ignore events beyond the binding tolerance');
+
+if (!process.exitCode) console.log('OK: bracket wiring consistent (31 matches, proper tree, chronology, anchors, koKickoff)');
