@@ -402,6 +402,26 @@ body {
 }
 .bracket-match.is-live .bracket-date-line { color: var(--live); }
 
+/* Collapsed round: thin vertical tab; tap to expand. */
+.bracket-round-label { cursor: pointer; }
+.brl-chev { font-size: 0.7em; }
+.bracket-round.collapsed { min-width: 0; cursor: pointer; }
+.bracket-collapsed-tab {
+  position: sticky; top: 0;
+  writing-mode: vertical-rl;
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 0.85rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted);
+  background: var(--card);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 0.9rem 0.4rem;
+}
+/* Hide connector stubs that would point into a collapsed column. */
+.bracket-round.collapsed + .bracket-round .bracket-cell::before { display: none; }
+.bracket-round:has(+ .bracket-round.collapsed) .bracket-cell::after { display: none; }
+
 .bracket-match.final-card { box-shadow: 0 0 0 2px var(--brass), var(--shadow); }
 .bracket-match.final-card .bracket-team { font-size: 0.9rem; padding: 0.65rem 0.8rem; }
 

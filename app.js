@@ -5,6 +5,7 @@ let matchesById = {}; // id -> match object
 let currentModalId = null;
 let refreshTimer = null;
 let pastExpanded = false; // Full Schedule: whether finished knockout games are revealed
+let bracketCollapsed = {}; // round code -> user override; default = auto-collapse finished rounds
 let groupExpanded = false; // Full Schedule: whether the finished group stage is revealed
 let lastRenderSig = null;  // skip redundant full re-renders (preserves scroll/interaction)
 
@@ -668,11 +669,26 @@ function renderBracket() {
   const ordered = bracketDisplayOrder();
 
   KNOCKOUT_ROUNDS.forEach((round, ri) => {
+    const code = ['R32', 'R16', 'QF', 'SF', 'FIN'][ri];
+    // Finished rounds fold into a thin tab so the bracket fits the screen;
+    // tapping any round label toggles it. Auto-collapse, user tap overrides.
+    const allFinal = ordered[ri].length > 0 && ordered[ri].every(m => m.status === 'final');
+    const collapsed = bracketCollapsed[code] ?? allFinal;
+    const toggle = () => { bracketCollapsed[code] = !collapsed; renderBracket(); };
+
     const col = document.createElement('div');
+    if (collapsed) {
+      col.className = 'bracket-round collapsed';
+      col.innerHTML = `<div class="bracket-collapsed-tab">${round.label} ▸</div>`;
+      col.onclick = toggle;
+      container.appendChild(col);
+      return;
+    }
     col.className = 'bracket-round';
     const isFinal = round.label.includes('FINAL');
 
-    col.innerHTML = `<div class="bracket-round-label">${round.label}</div>`;
+    col.innerHTML = `<div class="bracket-round-label">${round.label} <span class="brl-chev">▾</span></div>`;
+    col.querySelector('.bracket-round-label').onclick = toggle;
     const body = document.createElement('div');
     body.className = 'bracket-body';
 
