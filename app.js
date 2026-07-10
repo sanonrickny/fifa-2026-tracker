@@ -766,12 +766,16 @@ async function fetchOddsForMatch(m) {
   const cached = oddsCache[m.id];
   if (cached && (Date.now() - cached.fetched) < 90000) return cached;
 
-  // Step 1: ensure we have espnId — fetch scoreboard for match date if needed
-  // ESPN groups by Eastern midnight, so try stored date + next day as fallback
+  // Step 1: ensure we have espnId — fetch scoreboard for match date if needed.
+  // ESPN buckets events by Eastern calendar day, not UTC day — a 9pm ET kickoff
+  // is already past midnight UTC, so the UTC date is a day ahead of ESPN's
+  // bucket. Derive the date from the Eastern calendar day directly (same
+  // conversion as getDateKey) instead of slicing the UTC ISO string, and check
+  // a day on each side for slop.
   if (!m.espnId) {
-    for (let offset = 0; offset <= 1 && !m.espnId; offset++) {
+    for (let offset = -1; offset <= 1 && !m.espnId; offset++) {
       const d = new Date(m.kickoffUTC.getTime() + offset * 86400000);
-      const dateStr = d.toISOString().slice(0,10).replace(/-/g,'');
+      const dateStr = getDateKey(d, 'America/New_York').replace(/-/g,'');
       if (!espnEventCache[dateStr]) {
         try {
           const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/FIFA.World/scoreboard?dates=${dateStr}`);
