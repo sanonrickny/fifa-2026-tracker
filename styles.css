@@ -420,18 +420,19 @@ body {
 /* Collapsed round: thin vertical tab; tap to expand. */
 .bracket-round-label { cursor: pointer; }
 .brl-chev { font-size: 0.7em; }
-.bracket-round.collapsed { min-width: 0; cursor: pointer; }
+/* Negative margins eat most of the 2.25rem column gap around collapsed tabs */
+.bracket-round.collapsed { min-width: 0; cursor: pointer; margin: 0 -0.85rem; }
 .bracket-collapsed-tab {
   position: sticky; top: 0;
   writing-mode: vertical-rl;
   font-family: var(--font-display);
-  font-weight: 700; font-size: 0.85rem;
+  font-weight: 700; font-size: 0.68rem;
   letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--muted);
   background: var(--card);
-  border-radius: 10px;
+  border-radius: 8px;
   box-shadow: var(--shadow);
-  padding: 0.9rem 0.4rem;
+  padding: 0.55rem 0.2rem;
 }
 /* Hide connector stubs that would point into a collapsed column. */
 .bracket-round.collapsed + .bracket-round .bracket-cell::before { display: none; }

@@ -1230,12 +1230,16 @@ function downloadICS(id) {
     `LOCATION:${esc(loc)}`,
     'END:VEVENT', 'END:VCALENDAR',
   ].join('\r\n');
+  // Blob URL, not a data: URI — iOS Safari ignores `download` on data: links,
+  // so the button silently did nothing on phones.
+  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
   const a = document.createElement('a');
-  a.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+  a.href = url;
   a.download = `wc26-${id}.ics`;
   document.body.appendChild(a);
   a.click();
   a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000); // keep alive while the share sheet opens
 }
 
 // A "add to calendar" meta row for matches that haven't kicked off yet.
