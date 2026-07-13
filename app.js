@@ -87,6 +87,7 @@ async function fetchScores() {
     }
 
     computeQualification();           // roll results into standings + bracket
+    checkForGoals();                  // notify on score changes since last poll
     saveResults();                    // persist so a reload starts populated
     renderAll();
     updateLiveBadge();
@@ -399,6 +400,69 @@ function updateTimestamp() {
   if (!lastUpdated) { el.textContent = ''; return; }
   const t = formatTime(new Date(lastUpdated), userTZ);
   el.textContent = navigator.onLine === false ? `Offline · last ${t}` : `Updated ${t}`;
+}
+
+// ─── GOAL NOTIFICATIONS ───────────────────────────────────────────────────────
+const NOTIFY_KEY = 'rickcup_notify';
+let notifyOn = false;       // set from storage in init; only true with permission
+let prevScoreSnap = null;   // match id -> "home-away-status" from the previous poll
+
+function allMatches() {
+  return Object.values(matchesById).concat(KNOCKOUT_ROUNDS.flatMap(r => r.matches));
+}
+
+function updateNotifyBtn() {
+  const b = document.getElementById('notifyBtn');
+  if (!b) return;
+  // No Notification API (e.g. iOS Safari outside an installed PWA): hide the bell.
+  if (typeof Notification === 'undefined') { b.style.display = 'none'; return; }
+  b.textContent = notifyOn ? '🔔' : '🔕';
+  b.classList.toggle('on', notifyOn);
+  b.title = notifyOn ? 'Goal alerts on' : 'Goal alerts off';
+}
+
+async function toggleNotify() {
+  if (notifyOn) {
+    notifyOn = false;
+  } else {
+    const perm = await Notification.requestPermission();
+    notifyOn = perm === 'granted';
+  }
+  try { localStorage.setItem(NOTIFY_KEY, notifyOn ? '1' : '0'); } catch (e) {}
+  updateNotifyBtn();
+}
+
+function showNotification(title, body, tag) {
+  // Android only allows notifications via the service worker registration;
+  // the bare constructor covers desktop browsers without an active SW yet.
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready
+      .then(reg => reg.showNotification(title, { body, tag, icon: 'icon-192.png' }))
+      .catch(() => {});
+  } else {
+    try { new Notification(title, { body, tag }); } catch (e) {}
+  }
+}
+
+// Diff scores against the previous poll; notify on goals and on full time.
+function checkForGoals() {
+  const snap = {};
+  allMatches().forEach(m => {
+    if (!m.home || !m.away || m.homeScore == null || m.awayScore == null) return;
+    snap[m.id] = `${m.homeScore}-${m.awayScore}-${m.status}`;
+    if (!prevScoreSnap || !(m.id in prevScoreSnap) || prevScoreSnap[m.id] === snap[m.id]) return;
+    if (!notifyOn || Notification.permission !== 'granted') return;
+    const [ph, pa, ps] = prevScoreSnap[m.id].split('-');
+    const scored = m.homeScore > +ph || m.awayScore > +pa;
+    const finished = m.status === 'final' && ps !== 'final';
+    if (!scored && !finished) return;
+    showNotification(
+      scored ? '⚽ GOAL!' : '🏁 Full Time',
+      `${m.home.flag} ${m.home.name} ${m.homeScore} - ${m.awayScore} ${m.away.name} ${m.away.flag}`,
+      m.id
+    );
+  });
+  prevScoreSnap = snap;
 }
 
 // ─── SCORE DISPLAY ────────────────────────────────────────────────────────────
@@ -1287,6 +1351,16 @@ loadResults();          // hydrate cached results so the page starts populated
 computeQualification(); // build standings + bracket from cache before first paint
 renderAll();
 updateTimestamp();
+
+// Goal alerts: restore the user's opt-in (only if permission is still granted)
+notifyOn = (() => {
+  try {
+    return localStorage.getItem(NOTIFY_KEY) === '1'
+      && typeof Notification !== 'undefined'
+      && Notification.permission === 'granted';
+  } catch (e) { return false; }
+})();
+updateNotifyBtn();
 
 // Fetch scores immediately, then every 60s
 fetchScores();
