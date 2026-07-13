@@ -217,6 +217,12 @@ body {
 .standings-table tbody tr:last-child td { border-bottom: 1px solid var(--line); }
 
 .team-cell { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.fav-star {
+  color: var(--line); cursor: pointer; flex-shrink: 0;
+  font-size: 0.8rem; padding: 0.15rem 0.25rem; /* padded tap target */
+  transition: color 0.15s;
+}
+.fav-star.on { color: var(--brass); }
 .team-flag { font-size: 1.05rem; flex-shrink: 0; }
 .team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .team-pos {
@@ -301,6 +307,8 @@ body {
   cursor: pointer;
 }
 .schedule-match-card.is-live { box-shadow: inset 3px 0 0 var(--live), var(--shadow); }
+.schedule-match-card.is-fav { box-shadow: inset 3px 0 0 var(--brass), var(--shadow); }
+.schedule-match-card.is-live.is-fav { box-shadow: inset 3px 0 0 var(--live), var(--shadow); }
 
 .smc-group-badge {
   font-family: var(--font-display);
@@ -393,6 +401,7 @@ body {
 }
 .bracket-team:last-child { border-bottom: none; }
 .bracket-team.tbd { color: var(--muted); font-weight: 500; }
+.bracket-team.fav { box-shadow: inset 3px 0 0 var(--brass); }
 .bracket-team.winner { color: var(--green); font-weight: 700; }
 .bracket-team .bt-score { margin-left: auto; font-family: var(--font-mono); font-size: 0.85rem; }
 .bracket-team .bt-pens { color: var(--brass); font-size: 0.72rem; }

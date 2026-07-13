@@ -18,6 +18,21 @@ let koResultsCache = {};        // knockout match id -> {status, winnerCode, sco
 let lastUpdated = null;         // ms timestamp of last successful data refresh
 let QUAL = { best8: new Set(), groupStageDone: false };
 
+// ─── FOLLOWED TEAMS ──────────────────────────────────────────────────────────
+const FAVS_KEY = 'rickcup_favs';
+let favTeams = new Set(); // team codes the user follows (starred in Groups)
+try { favTeams = new Set(JSON.parse(localStorage.getItem(FAVS_KEY) || '[]')); } catch (e) {}
+
+function toggleFav(code) {
+  if (favTeams.has(code)) favTeams.delete(code); else favTeams.add(code);
+  try { localStorage.setItem(FAVS_KEY, JSON.stringify([...favTeams])); } catch (e) {}
+  renderAll(); // favs are part of the render signature, so this re-renders
+}
+
+function isFavMatch(m) {
+  return (m.home && favTeams.has(m.home.code)) || (m.away && favTeams.has(m.away.code));
+}
+
 // ─── TEAM LOOKUP ─────────────────────────────────────────────────────────────
 let teamByCode = {};
 Object.values(GROUPS).forEach(g => g.teams.forEach(t => teamByCode[t.code] = t));
@@ -512,7 +527,7 @@ function renderGroups() {
               a.t.name.localeCompare(b.t.name)
             )
             .map(({ t, s }, i) => `<tr>
-              <td><div class="team-cell"><span class="team-pos ${i<2?'pos-q':i===2?(QUAL.best8.has(letter)?'pos-q':'pos-m'):''}">${i+1}</span><span class="team-flag">${t.flag}</span><span class="team-name">${t.name}</span></div></td>
+              <td><div class="team-cell"><span class="team-pos ${i<2?'pos-q':i===2?(QUAL.best8.has(letter)?'pos-q':'pos-m'):''}">${i+1}</span><span class="team-flag">${t.flag}</span><span class="team-name">${t.name}</span><span class="fav-star ${favTeams.has(t.code)?'on':''}" onclick="toggleFav('${t.code}')" role="button" aria-label="Follow ${t.name}">★</span></div></td>
               <td>${s.p}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td>
               <td>${s.gd >= 0 ? '+'+s.gd : s.gd}</td>
               <td><strong>${s.pts}</strong></td>
@@ -602,7 +617,7 @@ function scheduleCard(m, now) {
   const isKO = !m.group;
   const f = isKO ? (FEEDS[m.id] || {}) : {};
   const click = isKO ? `openKnockoutById('${m.id}')` : `openModal('${m.id}')`;
-  return `<div class="schedule-match-card ${live?'is-live':''}" onclick="${click}">
+  return `<div class="schedule-match-card ${live?'is-live':''}${isFavMatch(m)?' is-fav':''}" onclick="${click}">
     <div class="smc-group-badge">${isKO ? koBadge(m.id) : m.group}</div>
     <div class="smc-teams">
       ${teamCell(m.home, f.home)}
@@ -783,8 +798,8 @@ function renderBracket() {
 
       mc.innerHTML = `
         <div class="bracket-date-line">${m.status==='live'?'<span class="live-pip"></span>':''}${formatDate(m.kickoffUTC, userTZ)} · ${formatTime(m.kickoffUTC, userTZ)}${m.homePens!=null?' · pens':''}</div>
-        <div class="bracket-team ${!m.home?'tbd':''}${homeWin?' winner':''}">${homeLabel}<span class="bt-score">${m.homeScore ?? ''}${homePen}</span></div>
-        <div class="bracket-team ${!m.away?'tbd':''}${awayWin?' winner':''}">${awayLabel}<span class="bt-score">${m.awayScore ?? ''}${awayPen}</span></div>
+        <div class="bracket-team ${!m.home?'tbd':''}${homeWin?' winner':''}${m.home&&favTeams.has(m.home.code)?' fav':''}">${homeLabel}<span class="bt-score">${m.homeScore ?? ''}${homePen}</span></div>
+        <div class="bracket-team ${!m.away?'tbd':''}${awayWin?' winner':''}${m.away&&favTeams.has(m.away.code)?' fav':''}">${awayLabel}<span class="bt-score">${m.awayScore ?? ''}${awayPen}</span></div>
       `;
       cell.appendChild(mc);
       body.appendChild(cell);
@@ -1253,6 +1268,7 @@ function renderSignature() {
     `${m.id}:${m.home?.code || ''}:${m.away?.code || ''}:${m.status}:${m.homeScore}:${m.awayScore}:${m.homePens}:${m.awayPens}:${m.winnerCode || ''}:${m.kickoffUTC ? m.kickoffUTC.getTime() : ''}`
   )));
   parts.push('q:' + [...QUAL.best8].sort().join(',') + ':' + (QUAL.groupStageDone ? '1' : '0'));
+  parts.push('f:' + [...favTeams].sort().join(','));
   return parts.join('|');
 }
 
