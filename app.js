@@ -1073,6 +1073,7 @@ function openModal(matchId) {
     <div class="modal-meta-row"><span class="modal-meta-icon">⏰</span><span class="modal-meta-val">${formatTime(m.kickoffUTC, userTZ)}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">📍</span><span class="modal-meta-val">${m.venue}, ${m.city}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">📡</span><span class="modal-meta-val">${m.broadcaster}</span></div>
+    ${calendarRow(m)}
   `;
 
   // Free links
@@ -1162,6 +1163,7 @@ function openKnockoutModal(m) {
     <div class="modal-meta-row"><span class="modal-meta-icon">⏰</span><span class="modal-meta-val">${formatTime(m.kickoffUTC, userTZ)}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">📍</span><span class="modal-meta-val">${m.venue}</span></div>
     <div class="modal-meta-row"><span class="modal-meta-icon">📡</span><span class="modal-meta-val">FOX / FS1</span></div>
+    ${calendarRow(m)}
   `;
 
   document.getElementById('mFreeLinks').innerHTML = FREE_STREAMS.map(s => `
@@ -1201,6 +1203,41 @@ function openKnockoutModal(m) {
 
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+}
+
+// ─── ADD TO CALENDAR ─────────────────────────────────────────────────────────
+// Build a one-event .ics client-side and download it. Works with Google,
+// Apple, and Outlook calendars on both mobile and desktop.
+function downloadICS(id) {
+  const m = matchesById[id] || knockoutMatchById(id);
+  if (!m || !m.kickoffUTC || isNaN(m.kickoffUTC)) return;
+  const dt = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const esc = s => String(s).replace(/([,;])/g, '\\$1');
+  const title = `${m.home?.name || 'TBD'} vs ${m.away?.name || 'TBD'} (World Cup 26)`;
+  const loc = m.group ? `${m.venue}, ${m.city}` : m.venue;
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//RickCup//WC26//EN',
+    'BEGIN:VEVENT',
+    `UID:${id}@rickcup`,
+    `DTSTAMP:${dt(new Date())}`,
+    `DTSTART:${dt(m.kickoffUTC)}`,
+    `DTEND:${dt(new Date(m.kickoffUTC.getTime() + 2 * 3600 * 1000))}`,
+    `SUMMARY:${esc(title)}`,
+    `LOCATION:${esc(loc)}`,
+    'END:VEVENT', 'END:VCALENDAR',
+  ].join('\r\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+  a.download = `wc26-${id}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// A "add to calendar" meta row for matches that haven't kicked off yet.
+function calendarRow(m) {
+  if (m.status !== 'upcoming') return '';
+  return `<button class="cal-btn" onclick="downloadICS('${m.id}')">📅 Add to calendar</button>`;
 }
 
 // Update just the score, penalties, and status badge of the open modal after a

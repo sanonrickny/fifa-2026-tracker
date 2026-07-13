@@ -522,6 +522,20 @@ body {
 .modal-meta-icon { font-size: 0.95rem; flex-shrink: 0; }
 .modal-meta-val { color: var(--ink); font-weight: 600; }
 
+.cal-btn {
+  margin-top: 0.35rem;
+  align-self: flex-start;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem; font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+.cal-btn:active { transform: scale(0.97); }
+
 /* ── MATCH EVENTS TIMELINE ── */
 .events-section {
   margin-bottom: 1.25rem; padding: 0.9rem 1rem;
