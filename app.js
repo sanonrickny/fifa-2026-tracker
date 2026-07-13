@@ -1302,3 +1302,6 @@ window.addEventListener('offline', updateTimestamp);
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
 });
+
+// PWA: app-shell caching + installability
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
