@@ -507,6 +507,35 @@ body {
 .modal-meta-icon { font-size: 0.95rem; flex-shrink: 0; }
 .modal-meta-val { color: var(--ink); font-weight: 600; }
 
+/* ── MATCH EVENTS TIMELINE ── */
+.events-section {
+  margin-bottom: 1.25rem; padding: 0.9rem 1rem;
+  background: var(--bg);
+  border-radius: var(--radius);
+}
+.events-title {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 1.05rem;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+.event-row {
+  display: flex; align-items: center; gap: 0.55rem;
+  padding: 0.28rem 0;
+  font-size: 0.82rem;
+}
+.event-min {
+  font-family: var(--font-mono);
+  font-size: 0.72rem; font-weight: 700; color: var(--muted);
+  min-width: 34px; text-align: right; flex-shrink: 0;
+}
+.event-icon { flex-shrink: 0; font-size: 0.85rem; }
+.event-player {
+  font-weight: 600; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.event-flag { flex-shrink: 0; font-size: 0.95rem; }
+
 /* ── WIN PROBABILITY ── */
 .prob-section {
   margin-bottom: 1.25rem; padding: 0.9rem 1rem;

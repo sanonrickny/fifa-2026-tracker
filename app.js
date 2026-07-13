@@ -98,10 +98,14 @@ async function fetchScores() {
     if (currentModalId) {
       const openMatch = matchesById[currentModalId] || knockoutMatchById(currentModalId);
       if (openMatch && openMatch.status === 'live') {
-        // Bust cache so we get fresh in-play odds
+        // Bust caches so we get fresh in-play odds and events
         delete oddsCache[currentModalId];
+        delete summaryCache[currentModalId];
         fetchOddsForMatch(openMatch).then(odds => {
           if (currentModalId === openMatch.id) renderProbability(openMatch, odds);
+        });
+        fetchSummary(openMatch).then(data => {
+          if (currentModalId === openMatch.id) renderEvents(openMatch, data);
         });
       }
     }
@@ -762,13 +766,12 @@ function devig(home, draw, away) {
 const espnEventCache = {};
 // Odds cache: espnId → { homeML, drawML, awayML, source, isLive, fetched }
 const oddsCache = {};
+// Summary cache: match id → { promise, fetched }. Odds and the events timeline
+// both read the same ESPN summary response, so fetch it once per match.
+const summaryCache = {};
 
-async function fetchOddsForMatch(m) {
-  // If we already have fresh odds (< 90s old), return cached
-  const cached = oddsCache[m.id];
-  if (cached && (Date.now() - cached.fetched) < 90000) return cached;
-
-  // Step 1: ensure we have espnId — fetch scoreboard for match date if needed.
+// Ensure m.espnId is set: fetch the scoreboard for the match date if needed.
+async function bindEspnId(m) {
   // ESPN buckets events by Eastern calendar day, not UTC day — a 9pm ET kickoff
   // is already past midnight UTC, so the UTC date is a day ahead of ESPN's
   // bucket. Derive the date from the Eastern calendar day directly (same
@@ -805,39 +808,56 @@ async function fetchOddsForMatch(m) {
     }
   }
 
-  if (!m.espnId) return null;
+}
 
-  // Step 2: fetch summary for this event
-  try {
-    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/FIFA.World/summary?event=${m.espnId}`);
-    if (!r.ok) return null;
-    const data = await r.json();
+// Fetch the ESPN summary (odds, key events) for a match. The in-flight promise
+// is cached for 60s so concurrent odds + events callers share one request.
+function fetchSummary(m) {
+  const c = summaryCache[m.id];
+  if (c && (Date.now() - c.fetched) < 60000) return c.promise;
+  const promise = (async () => {
+    if (!m.espnId) await bindEspnId(m);
+    if (!m.espnId) return null;
+    try {
+      const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/FIFA.World/summary?event=${m.espnId}`);
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) {
+      return null;
+    }
+  })();
+  summaryCache[m.id] = { promise, fetched: Date.now() };
+  return promise;
+}
 
-    const pc = (data.pickcenter || data.odds || [])[0];
-    if (!pc) return null;
+async function fetchOddsForMatch(m) {
+  // If we already have fresh odds (< 90s old), return cached
+  const cached = oddsCache[m.id];
+  if (cached && (Date.now() - cached.fetched) < 90000) return cached;
 
-    const homeML = parseML(pc.homeTeamOdds);
-    const awayML = parseML(pc.awayTeamOdds);
-    const drawML = parseML(pc.drawOdds);
+  const data = await fetchSummary(m);
+  if (!data) return null;
 
-    if (homeML == null || awayML == null || drawML == null) return null;
+  const pc = (data.pickcenter || data.odds || [])[0];
+  if (!pc) return null;
 
-    const raw = devig(mlToProb(homeML), mlToProb(drawML), mlToProb(awayML));
-    const provName = pc.provider?.name || 'Sportsbook';
-    const isLive = m.status === 'live';
+  const homeML = parseML(pc.homeTeamOdds);
+  const awayML = parseML(pc.awayTeamOdds);
+  const drawML = parseML(pc.drawOdds);
 
-    const result = {
-      home: raw.home, draw: raw.draw, away: raw.away,
-      homeML, drawML, awayML,
-      source: provName,
-      isLive,
-      fetched: Date.now(),
-    };
-    oddsCache[m.id] = result;
-    return result;
-  } catch(e) {
-    return null;
-  }
+  if (homeML == null || awayML == null || drawML == null) return null;
+
+  const raw = devig(mlToProb(homeML), mlToProb(drawML), mlToProb(awayML));
+
+  const result = {
+    home: raw.home, draw: raw.draw, away: raw.away,
+    homeML, drawML, awayML,
+    source: pc.provider?.name || 'Sportsbook',
+    isLive: m.status === 'live',
+    fetched: Date.now(),
+  };
+  oddsCache[m.id] = result;
+  return result;
 }
 
 function renderProbability(m, odds) {
@@ -888,6 +908,49 @@ function renderProbability(m, odds) {
       document.getElementById('pp-away').textContent = awayPct + '%';
     });
   });
+}
+
+// ─── MATCH EVENTS TIMELINE ────────────────────────────────────────────────────
+// Pull goals and cards out of an ESPN summary's keyEvents. Defensive: shapes
+// vary by event type, so every field access is optional.
+function parseMatchEvents(data) {
+  return (data?.keyEvents || []).map(ev => {
+    const type = ev.type?.text || '';
+    let icon = null;
+    if (/goal/i.test(type) || /^penalty - scored/i.test(type)) icon = '⚽';
+    else if (/yellow card/i.test(type)) icon = '🟨';
+    else if (/red card/i.test(type)) icon = '🟥';
+    if (!icon) return null;
+    return {
+      icon,
+      minute: ev.clock?.displayValue || '',
+      teamName: ev.team?.displayName || '',
+      player: ev.participants?.[0]?.athlete?.displayName || '',
+      own: /own goal/i.test(type),
+      pen: /penalty/i.test(type),
+      text: ev.text || '',
+    };
+  }).filter(Boolean);
+}
+
+function renderEvents(m, data) {
+  const section = document.getElementById('eventsSection');
+  const list = document.getElementById('eventsList');
+  const evts = parseMatchEvents(data);
+  if (!evts.length) { section.style.display = 'none'; list.innerHTML = ''; return; }
+  list.innerHTML = evts.map(e => {
+    // Attribute the event to one of our two teams to show its flag.
+    const flag = sameTeam(m.home, '', e.teamName) ? m.home.flag
+               : sameTeam(m.away, '', e.teamName) ? m.away.flag : '';
+    const note = e.own ? ' (own goal)' : e.pen ? ' (pen)' : '';
+    return `<div class="event-row">
+      <span class="event-min">${e.minute}</span>
+      <span class="event-icon">${e.icon}</span>
+      <span class="event-player">${e.player || e.text}${note}</span>
+      <span class="event-flag">${flag}</span>
+    </div>`;
+  }).join('');
+  section.style.display = '';
 }
 
 // ─── MODAL ────────────────────────────────────────────────────────────────────
@@ -967,6 +1030,12 @@ function openModal(matchId) {
     // Only update if same modal is still open
     if (currentModalId === matchId) renderProbability(m, odds);
   });
+
+  // Events timeline (goals, cards) from the same summary fetch
+  document.getElementById('eventsSection').style.display = 'none';
+  fetchSummary(m).then(data => {
+    if (currentModalId === matchId) renderEvents(m, data);
+  });
 }
 
 function openKnockoutModal(m) {
@@ -1036,10 +1105,14 @@ function openKnockoutModal(m) {
   // as group games); until then there's nothing to price.
   document.getElementById('probSource').textContent = '';
   document.getElementById('probLiveDot').style.display = 'none';
+  document.getElementById('eventsSection').style.display = 'none';
   if (m.home && m.away) {
     document.getElementById('probContent').innerHTML = '<div class="prob-loading">Loading odds…</div>';
     fetchOddsForMatch(m).then(odds => {
       if (currentModalId === m.id) renderProbability(m, odds);
+    });
+    fetchSummary(m).then(data => {
+      if (currentModalId === m.id) renderEvents(m, data);
     });
   } else {
     document.getElementById('probContent').innerHTML = `<div class="prob-error">Odds available once teams are confirmed</div>`;
