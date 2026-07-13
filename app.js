@@ -92,9 +92,11 @@ async function fetchScores() {
     updateLiveBadge();
     updateTimestamp();
 
-    // If a match modal is open and the game is live, refresh odds too
+    // If a match modal is open and the game is live, refresh odds too.
+    // Knockout matches live outside matchesById, so fall back to the KO lookup:
+    // during the semis and final that is the only kind of live game there is.
     if (currentModalId) {
-      const openMatch = matchesById[currentModalId];
+      const openMatch = matchesById[currentModalId] || knockoutMatchById(currentModalId);
       if (openMatch && openMatch.status === 'live') {
         // Bust cache so we get fresh in-play odds
         delete oddsCache[currentModalId];
