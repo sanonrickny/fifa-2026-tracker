@@ -92,11 +92,13 @@ async function fetchScores() {
     updateLiveBadge();
     updateTimestamp();
 
-    // If a match modal is open and the game is live, refresh odds too.
-    // Knockout matches live outside matchesById, so fall back to the KO lookup:
-    // during the semis and final that is the only kind of live game there is.
+    // If a match modal is open, keep its score/status fresh; if the game is
+    // live, refresh odds and events too. Knockout matches live outside
+    // matchesById, so fall back to the KO lookup: during the semis and final
+    // that is the only kind of live game there is.
     if (currentModalId) {
       const openMatch = matchesById[currentModalId] || knockoutMatchById(currentModalId);
+      if (openMatch) refreshOpenModalScore(openMatch);
       if (openMatch && openMatch.status === 'live') {
         // Bust caches so we get fresh in-play odds and events
         delete oddsCache[currentModalId];
@@ -1120,6 +1122,30 @@ function openKnockoutModal(m) {
 
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+}
+
+// Update just the score, penalties, and status badge of the open modal after a
+// poll, so a live game's modal tracks the match without a full re-open (which
+// would reset the user's modal scroll).
+function refreshOpenModalScore(m) {
+  const scoreEl = document.getElementById('mScore');
+  if (m.status !== 'upcoming' && m.homeScore != null) {
+    scoreEl.textContent = `${m.homeScore} – ${m.awayScore}`;
+    scoreEl.className = `modal-score-display ${m.status === 'live' ? 'live-score' : 'final'}`;
+  }
+  if (m.homePens != null) {
+    const pensEl = document.getElementById('mPens');
+    pensEl.textContent = `Penalties ${m.homePens}–${m.awayPens}`;
+    pensEl.style.display = 'block';
+  }
+  const badge = document.getElementById('mStatusBadge');
+  if (m.status === 'live') {
+    badge.textContent = m.minute ? `LIVE · ${m.minute}` : 'LIVE';
+    badge.className = 'modal-status-badge live';
+  } else if (m.status === 'final') {
+    badge.textContent = m.group ? 'Final' : 'Full Time';
+    badge.className = 'modal-status-badge final';
+  }
 }
 
 function getMatchday(id) {
