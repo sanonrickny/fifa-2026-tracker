@@ -1118,6 +1118,8 @@ function openModal(matchId) {
   fetchSummary(m).then(data => {
     if (currentModalId === matchId) renderEvents(m, data);
   });
+
+  setModalHash(matchId);
 }
 
 function openKnockoutModal(m) {
@@ -1203,6 +1205,8 @@ function openKnockoutModal(m) {
 
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+
+  setModalHash(m.id);
 }
 
 // ─── ADD TO CALENDAR ─────────────────────────────────────────────────────────
@@ -1275,11 +1279,47 @@ function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
   document.body.style.overflow = '';
   currentModalId = null;
+  // Drop the match hash. If we pushed it, go back so history stays clean; a
+  // direct-link landing never pushed, so rewrite in place instead of leaving
+  // the site.
+  const pushed = hashPushed;
+  hashPushed = false;
+  if (location.hash) {
+    if (pushed) history.back();
+    else history.replaceState(null, '', location.pathname + location.search);
+  }
 }
 
 function closeModalOnBg(e) {
   if (e.target === document.getElementById('modalOverlay')) closeModal();
 }
+
+// ─── DEEP LINKS ──────────────────────────────────────────────────────────────
+// The open match lives in the URL hash (#A1, #QF3, ...) so a specific game can
+// be linked or texted, and the phone's back button closes the modal.
+let hashPushed = false; // whether we pushed the current hash entry ourselves
+
+function setModalHash(id) {
+  if (location.hash === '#' + id) return;
+  history.pushState(null, '', '#' + id);
+  hashPushed = true;
+}
+
+function openById(id) {
+  const ko = knockoutMatchById(id);
+  if (ko) openKnockoutModal(ko);
+  else if (matchesById[id]) openModal(id);
+}
+
+window.addEventListener('popstate', () => {
+  const id = location.hash.slice(1);
+  if (!id) {
+    hashPushed = false;
+    if (currentModalId) closeModal();
+  } else {
+    openById(id);
+  }
+});
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function showTab(name, btn) {
@@ -1404,6 +1444,9 @@ loadResults();          // hydrate cached results so the page starts populated
 computeQualification(); // build standings + bracket from cache before first paint
 renderAll();
 updateTimestamp();
+
+// Deep link: a shared URL like /#QF1 opens that match's modal on load
+if (location.hash) openById(location.hash.slice(1));
 
 // Goal alerts: restore the user's opt-in (only if permission is still granted)
 notifyOn = (() => {
