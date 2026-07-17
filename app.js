@@ -1338,6 +1338,12 @@ sheet.addEventListener('touchmove', e => sheetDragMove(e.touches[0].clientY, e),
 sheet.addEventListener('touchend', sheetDragEnd);
 sheet.addEventListener('touchcancel', sheetDragEnd);
 
+// Same gesture with a mouse on desktop. Move/up live on window so the drag
+// survives the cursor leaving the sheet mid-pull.
+sheet.addEventListener('mousedown', e => sheetDragBegin(e.clientY));
+window.addEventListener('mousemove', e => sheetDragMove(e.clientY, e));
+window.addEventListener('mouseup', sheetDragEnd);
+
 // ─── DEEP LINKS ──────────────────────────────────────────────────────────────
 // The open match lives in the URL hash (#A1, #QF3, ...) so a specific game can
 // be linked or texted, and the phone's back button closes the modal.
