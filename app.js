@@ -1298,6 +1298,46 @@ function closeModalOnBg(e) {
   if (e.target === document.getElementById('modalOverlay')) closeModal();
 }
 
+// ─── DRAG TO DISMISS ─────────────────────────────────────────────────────────
+// Swipe the sheet down to close it. Only engages once the sheet is scrolled to
+// the top, so normal scrolling inside it keeps working; below the dismiss
+// threshold it snaps back.
+const sheet = document.getElementById('modal');
+let dragStartY = null, dragDY = 0, sheetDragging = false;
+
+function sheetDragBegin(y) { dragStartY = y; dragDY = 0; sheetDragging = false; }
+
+function sheetDragMove(y, e) {
+  if (dragStartY === null) return;
+  dragDY = y - dragStartY;
+  if (!sheetDragging) {
+    if (dragDY > 8 && sheet.scrollTop <= 0) {
+      sheetDragging = true;
+      sheet.style.transition = 'none';
+    } else {
+      if (dragDY < 0) dragStartY = null; // moving up: it's a scroll, not a drag
+      return;
+    }
+  }
+  if (e.cancelable) e.preventDefault();
+  sheet.style.transform = `translateY(${Math.max(dragDY, 0)}px)`;
+}
+
+function sheetDragEnd() {
+  if (dragStartY === null) return;
+  // Restore the stylesheet transition, then clear the inline offset: the sheet
+  // animates from where the finger left it, down (dismiss) or back up (snap).
+  sheet.style.transition = '';
+  sheet.style.transform = '';
+  if (sheetDragging && dragDY > 120) closeModal();
+  dragStartY = null; sheetDragging = false;
+}
+
+sheet.addEventListener('touchstart', e => sheetDragBegin(e.touches[0].clientY), { passive: true });
+sheet.addEventListener('touchmove', e => sheetDragMove(e.touches[0].clientY, e), { passive: false });
+sheet.addEventListener('touchend', sheetDragEnd);
+sheet.addEventListener('touchcancel', sheetDragEnd);
+
 // ─── DEEP LINKS ──────────────────────────────────────────────────────────────
 // The open match lives in the URL hash (#A1, #QF3, ...) so a specific game can
 // be linked or texted, and the phone's back button closes the modal.
