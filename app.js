@@ -1340,7 +1340,8 @@ sheet.addEventListener('touchcancel', sheetDragEnd);
 
 // Same gesture with a mouse on desktop. Move/up live on window so the drag
 // survives the cursor leaving the sheet mid-pull.
-sheet.addEventListener('mousedown', e => sheetDragBegin(e.clientY));
+// preventDefault stops text selection during the pull; button clicks still fire
+sheet.addEventListener('mousedown', e => { e.preventDefault(); sheetDragBegin(e.clientY); });
 window.addEventListener('mousemove', e => sheetDragMove(e.clientY, e));
 window.addEventListener('mouseup', sheetDragEnd);
 
