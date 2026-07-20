@@ -195,6 +195,61 @@ body {
   font-size: 0.78rem; color: rgba(255,255,255,0.75);
 }
 
+/* ── RECAP: "Story of the Cup", shown atop the bracket once it's over ── */
+.recap:empty { display: none; }
+.recap-card {
+  max-width: 520px; margin: 0 auto 0.85rem;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.recap-title {
+  font-family: var(--font-display);
+  font-weight: 800; font-size: 1.15rem;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: #fff; background: var(--pitch);
+  padding: 0.6rem 1rem;
+}
+.recap-podium { padding: 0.35rem 1rem 0.5rem; }
+.recap-podium-row {
+  display: flex; align-items: center; gap: 0.55rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.recap-podium-row:last-child { border-bottom: none; }
+.recap-medal { font-size: 1.3rem; flex-shrink: 0; width: 1.5rem; text-align: center; }
+.recap-team-flag { font-size: 1.5rem; flex-shrink: 0; }
+.recap-team-name {
+  font-weight: 700; font-size: 1rem; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.recap-team-role {
+  font-family: var(--font-mono);
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted);
+  flex-shrink: 0;
+}
+.recap-semis-names { font-weight: 600; font-size: 0.85rem; color: var(--ink); }
+.recap-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line);
+}
+.recap-stat {
+  text-align: center; padding: 0.6rem 0.3rem;
+  border-right: 1px solid var(--line);
+}
+.recap-stat:last-child { border-right: none; }
+.recap-stat-num {
+  font-family: var(--font-mono); font-weight: 700;
+  font-size: 1.25rem; color: var(--pitch);
+}
+.recap-stat-num.recap-stat-sm { font-size: 0.82rem; }
+.recap-stat-label {
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-top: 0.1rem;
+}
+
 /* ── GROUPS ── */
 .groups-grid {
   display: grid;

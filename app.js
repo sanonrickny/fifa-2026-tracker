@@ -730,6 +730,81 @@ function feedLabel(spec) {
 // feed the same next match are vertically adjacent (a post-order walk of the
 // feed tree from the Final back to R32). Returns one ordered array per round,
 // aligned to KNOCKOUT_ROUNDS' order [R32, R16, QF, SF, FIN].
+// True once the final is played and decided — gates the recap, the champion
+// card, and archive mode (see the poll loop at init).
+function tournamentOver() {
+  const fin = knockoutMatchById('FIN');
+  return !!(fin && fin.status === 'final' && fin.winnerCode && fin.home && fin.away);
+}
+
+// The team that lost a decided knockout match (null if not final).
+function koLoser(id) {
+  const m = knockoutMatchById(id);
+  if (!m || m.status !== 'final' || !m.winnerCode || !m.home || !m.away) return null;
+  return m.home.code === m.winnerCode ? m.away : m.home;
+}
+
+// "Story of the Cup" — podium + tournament-wide stats, all derived from results
+// already cached in memory (no extra network). Renders only once it's over.
+function renderRecap() {
+  const el = document.getElementById('recapSection');
+  if (!el) return;
+  if (!tournamentOver()) { el.innerHTML = ''; return; }
+
+  const fin = knockoutMatchById('FIN');
+  const champ = teamByCode[fin.winnerCode];
+  const runnerUp = koLoser('FIN');
+  const semis = [koLoser('SF1'), koLoser('SF2')].filter(Boolean);
+
+  // Aggregate every finished match (group + knockout) with a real score.
+  let played = 0, goals = 0, biggest = null;
+  allMatches().forEach(m => {
+    if (m.status !== 'final' || m.homeScore == null || m.awayScore == null) return;
+    played++; goals += m.homeScore + m.awayScore;
+    const margin = Math.abs(m.homeScore - m.awayScore);
+    if (m.home && m.away && (!biggest || margin > biggest.margin)) biggest = { m, margin };
+  });
+  const avg = played ? (goals / played).toFixed(1) : '0';
+
+  const bigWin = biggest ? (() => {
+    const { m } = biggest;
+    const w = m.homeScore > m.awayScore ? m.home : m.away;
+    const hi = Math.max(m.homeScore, m.awayScore), lo = Math.min(m.homeScore, m.awayScore);
+    return `${w.flag} ${w.code} ${hi}–${lo}`;
+  })() : '—';
+
+  const podiumRow = (medal, label, team) => team ? `
+    <div class="recap-podium-row">
+      <span class="recap-medal">${medal}</span>
+      <span class="recap-team-flag">${team.flag}</span>
+      <span class="recap-team-name">${team.name}</span>
+      <span class="recap-team-role">${label}</span>
+    </div>` : '';
+
+  const semisRow = semis.length ? `
+    <div class="recap-podium-row recap-semis">
+      <span class="recap-medal">🎖️</span>
+      <span class="recap-team-name recap-semis-names">${semis.map(t => `${t.flag} ${t.name}`).join('  ·  ')}</span>
+      <span class="recap-team-role">Semifinalists</span>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="recap-card">
+      <div class="recap-title">Story of the Cup</div>
+      <div class="recap-podium">
+        ${podiumRow('🥇', 'Champions', champ)}
+        ${podiumRow('🥈', 'Runners-up', runnerUp)}
+        ${semisRow}
+      </div>
+      <div class="recap-stats">
+        <div class="recap-stat"><div class="recap-stat-num">${played}</div><div class="recap-stat-label">Matches</div></div>
+        <div class="recap-stat"><div class="recap-stat-num">${goals}</div><div class="recap-stat-label">Goals</div></div>
+        <div class="recap-stat"><div class="recap-stat-num">${avg}</div><div class="recap-stat-label">Per game</div></div>
+        <div class="recap-stat"><div class="recap-stat-num recap-stat-sm">${bigWin}</div><div class="recap-stat-label">Biggest win</div></div>
+      </div>
+    </div>`;
+}
+
 function bracketDisplayOrder() {
   const order = { R32:[], R16:[], QF:[], SF:[], FIN:[] };
   const code = id => id.startsWith('R32') ? 'R32' : id.startsWith('R16') ? 'R16'
@@ -759,8 +834,11 @@ function renderBracket() {
     const code = ['R32', 'R16', 'QF', 'SF', 'FIN'][ri];
     // Finished rounds fold into a thin tab so the bracket fits the screen;
     // tapping any round label toggles it. Auto-collapse, user tap overrides.
+    // Auto-collapse a round once every game in it is final, EXCEPT the Final
+    // itself — the decided championship match stays open so the bracket never
+    // renders as an empty screen once the tournament is over.
     const allFinal = ordered[ri].length > 0 && ordered[ri].every(m => m.status === 'final');
-    const collapsed = bracketCollapsed[code] ?? allFinal;
+    const collapsed = bracketCollapsed[code] ?? (allFinal && code !== 'FIN');
     const toggle = () => { bracketCollapsed[code] = !collapsed; renderBracket(); };
 
     const col = document.createElement('div');
@@ -1407,6 +1485,7 @@ function renderAll() {
   renderGroups();
   renderSchedule();
   renderBracket();
+  renderRecap();
   renderLiveStrip();
 }
 
@@ -1531,14 +1610,20 @@ notifyOn = (() => {
 })();
 updateNotifyBtn();
 
-// Fetch scores immediately, then every 60s
+// Fetch scores immediately, then every 60s — until the tournament is over.
+// Once the final is decided the results are frozen, so polling stops and the
+// app runs as a static archive (one confirming fetch has already happened).
 fetchScores();
-setInterval(fetchScores, 60000);
+const poll = setInterval(() => {
+  if (tournamentOver()) { clearInterval(poll); return; }
+  fetchScores();
+}, 60000);
 
 // Refresh as soon as the tab is re-focused or the network comes back (covers
-// laptop-sleep / lost-connection cases so data is never silently stale).
-document.addEventListener('visibilitychange', () => { if (!document.hidden) fetchScores(); });
-window.addEventListener('online', () => { updateTimestamp(); fetchScores(); });
+// laptop-sleep / lost-connection cases so data is never silently stale) —
+// skipped in archive mode, where nothing can change.
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !tournamentOver()) fetchScores(); });
+window.addEventListener('online', () => { updateTimestamp(); if (!tournamentOver()) fetchScores(); });
 window.addEventListener('offline', updateTimestamp);
 
 // Keyboard: Escape closes modal
