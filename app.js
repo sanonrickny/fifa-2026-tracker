@@ -1435,6 +1435,28 @@ function renderLiveStrip() {
   if (!row) return;
   const live = getLiveMatches();
   if (live.length === 0) {
+    // Tournament over: crown the champions where live/next games used to be.
+    const fin = knockoutMatchById('FIN');
+    if (fin && fin.status === 'final' && fin.winnerCode && fin.home && fin.away) {
+      const champ = teamByCode[fin.winnerCode];
+      const won = fin.home.code === fin.winnerCode;
+      const loser = won ? fin.away : fin.home;
+      const ws = won ? fin.homeScore : fin.awayScore;
+      const ls = won ? fin.awayScore : fin.homeScore;
+      const pens = fin.homePens != null
+        ? ` (${won ? fin.homePens : fin.awayPens}–${won ? fin.awayPens : fin.homePens} pens)` : '';
+      row.innerHTML = `
+        <div class="champion-card">
+          <div class="champ-chip">🏆 2026 World Champions</div>
+          <div class="champ-row">
+            <span class="champ-flag">${champ.flag}</span>
+            <span class="champ-name">${champ.name}</span>
+          </div>
+          <div class="champ-result">Beat ${loser.name} ${ws}–${ls}${pens} in the final</div>
+        </div>`;
+      row.querySelector('.champion-card').addEventListener('click', () => openKnockoutModal(fin));
+      return;
+    }
     // No live game — show the next kickoff instead.
     const n = nextUpcoming();
     if (!n) { row.innerHTML = ''; return; }
