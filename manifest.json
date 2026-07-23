@@ -1,5 +1,6 @@
 {
   "name": "World Cup 26 Live",
+  "lang": "en",
   "short_name": "WC26",
   "description": "Live scores, schedule, bracket, and standings for the 2026 World Cup",
   "start_url": "./",
