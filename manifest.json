@@ -5,6 +5,7 @@
   "description": "Live scores, schedule, bracket, and standings for the 2026 World Cup",
   "start_url": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0E3B2E",
   "theme_color": "#0E3B2E",
   "icons": [
