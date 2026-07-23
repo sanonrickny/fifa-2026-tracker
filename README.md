@@ -8,6 +8,7 @@ A live match tracker for the 2026 World Cup across the USA, Canada, and Mexico.
 → Full schedule displayed in your local time — pick any US or Canadian time zone  
 → Bracket and standings that update automatically  
 → Fully responsive, works well on mobile  
+→ Installable as a PWA — add it to your home screen  
 
 ## Stack
 
