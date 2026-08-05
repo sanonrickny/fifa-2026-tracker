@@ -23,8 +23,11 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     fetch(e.request).then(resp => {
-      const copy = resp.clone();
-      caches.open(CACHE).then(c => c.put(e.request, copy));
+      // Only cache successes: a 404 or 5xx would otherwise become the offline fallback.
+      if (resp.ok) {
+        const copy = resp.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+      }
       return resp;
     }).catch(() => caches.match(e.request, { ignoreSearch: true }))
   );
