@@ -433,7 +433,11 @@ function updateNotifyBtn() {
   if (typeof Notification === 'undefined') { b.style.display = 'none'; return; }
   b.textContent = notifyOn ? '🔔' : '🔕';
   b.classList.toggle('on', notifyOn);
-  b.title = notifyOn ? 'Goal alerts on' : 'Goal alerts off';
+  // aria-label too, not just title: a static label hides the state from screen readers.
+  const label = notifyOn ? 'Goal alerts on' : 'Goal alerts off';
+  b.title = label;
+  b.setAttribute('aria-label', label);
+  b.setAttribute('aria-pressed', notifyOn ? 'true' : 'false');
 }
 
 async function toggleNotify() {
