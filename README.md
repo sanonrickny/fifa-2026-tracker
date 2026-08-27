@@ -2,6 +2,8 @@
 
 A live match tracker for the 2026 World Cup across the USA, Canada, and Mexico.
 
+Live at [fifa-2026-tracker.web.app](https://fifa-2026-tracker.web.app/).
+
 ## What it does
 
 → Live scores as matches happen  
