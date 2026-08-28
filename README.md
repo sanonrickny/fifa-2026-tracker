@@ -24,6 +24,15 @@ python3 -m http.server 8000
 
 Then open [http://localhost:8000](http://localhost:8000).
 
+## Tests
+
+```bash
+node test_bracket.js
+```
+
+Checks the knockout bracket is a proper single-elimination tree and that the
+wiring stays consistent with each slot's scheduled kickoff.
+
 ---
 
 Made for the love of the game.
