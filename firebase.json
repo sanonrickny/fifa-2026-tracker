@@ -5,7 +5,11 @@
       "firebase.json",
       ".gitignore",
       ".firebase/**",
-      ".claude/**"
+      ".claude/**",
+      ".github/**",
+      "docs/**",
+      "README.md",
+      "test_bracket.js"
     ],
     "rewrites": [
       {
