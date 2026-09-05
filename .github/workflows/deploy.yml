@@ -16,6 +16,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Check the bracket wiring
+        run: node test_bracket.js
+
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
