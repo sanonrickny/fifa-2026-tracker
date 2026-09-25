@@ -1222,7 +1222,9 @@ function openKnockoutModal(m) {
   // refresh in fetchScores targets the right match (knockout ids aren't in
   // matchesById, so that branch safely no-ops instead of acting on a stale id).
   currentModalId = m.id;
-  document.getElementById('mRound').textContent = 'Knockout Stage';
+  const round = KNOCKOUT_ROUNDS.find(r => r.matches.includes(m));
+  document.getElementById('mRound').textContent =
+    m.id === 'TP' ? 'Third-place match' : round ? round.label : 'Knockout Stage';
   document.getElementById('mHomeFlag').textContent = m.home?.flag || '🏳️';
   document.getElementById('mHomeName').textContent = m.home?.name || 'TBD';
   document.getElementById('mHomeCode').textContent = '';
