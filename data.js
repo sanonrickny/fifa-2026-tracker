@@ -268,6 +268,7 @@ const KNOCKOUT_ROUNDS = [
     label: '🏆 FINAL',
     matches: [
     { id:'FIN', home:null, away:null, date:'Jul 19', time:'3:00 PM ET', venue:"MetLife Stadium, East Rutherford NJ" },
+    { id:'TP', home:null, away:null, date:'Jul 18', time:'5:00 PM ET', venue:"Hard Rock Stadium, Miami Gardens FL" },
     ]
   },
 ];
@@ -277,6 +278,7 @@ const KNOCKOUT_ROUNDS = [
 //   {gw:'A'}  winner of Group A      {gr:'A'} runner-up of Group A
 //   {g3:[...]} best-third slot (allowed source groups per FIFA Annex C)
 //   {w:'R32M1'} winner of an earlier knockout match
+//   {l:'SF1'}   loser of an earlier knockout match (third-place match only)
 // R32 display order is arranged so each adjacent pair feeds the same R16 match.
 const FEEDS = {
   // Round of 32 — slot id ↔ FIFA match #. Each slot's wiring matches the
@@ -314,9 +316,10 @@ const FEEDS = {
   QF2: { home:{w:'R16M5'}, away:{w:'R16M6'} }, // SoFi Inglewood
   QF3: { home:{w:'R16M3'}, away:{w:'R16M4'} }, // Hard Rock Miami
   QF4: { home:{w:'R16M7'}, away:{w:'R16M8'} }, // GEHA Arrowhead KC
-  // Semifinals + Final
+  // Semifinals, third-place match, and Final
   SF1: { home:{w:'QF1'}, away:{w:'QF2'} }, // M101
   SF2: { home:{w:'QF3'}, away:{w:'QF4'} }, // M102
+  TP:  { home:{l:'SF1'}, away:{l:'SF2'} }, // M103
   FIN: { home:{w:'SF1'}, away:{w:'SF2'} }, // M104
 };
 

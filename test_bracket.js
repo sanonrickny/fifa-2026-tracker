@@ -33,12 +33,17 @@ Object.entries(FEEDS).forEach(([id, f]) => {
   });
 });
 Object.keys(kickoff).forEach(id => {
-  if (id === 'FIN') return;
+  if (id === 'FIN' || id === 'TP') return;
   ok(fedInto[id] === 1, `${id} should feed exactly one later match, got ${fedInto[id] || 0}`);
 });
 
-// Counts: 16 R32, 8 R16, 4 QF, 2 SF, 1 FIN = 31 matches; 8 third-place slots.
-ok(Object.keys(FEEDS).length === 31, `expected 31 knockout matches, got ${Object.keys(FEEDS).length}`);
+// Third-place match: the two semifinal losers, after both semis are played.
+ok(FEEDS.TP.home.l === 'SF1' && FEEDS.TP.away.l === 'SF2', 'TP should be fed by the losers of SF1 and SF2');
+ok(kickoff.SF1 < kickoff.TP && kickoff.SF2 < kickoff.TP && kickoff.TP < kickoff.FIN,
+   'TP must kick off after both semifinals and before the final');
+
+// Counts: 16 R32, 8 R16, 4 QF, 2 SF, 1 TP, 1 FIN = 32 matches; 8 third-place slots.
+ok(Object.keys(FEEDS).length === 32, `expected 32 knockout matches, got ${Object.keys(FEEDS).length}`);
 const g3Slots = Object.entries(FEEDS).filter(([, f]) => f.home.g3 || f.away.g3).map(([id]) => id);
 ok(g3Slots.length === 8, `expected 8 third-place slots, got ${g3Slots.length}`);
 ok(THIRD_SLOTS.length === 8 && THIRD_SLOTS.every(s => g3Slots.includes(s.id)),
@@ -69,4 +74,4 @@ ok(koKickoff('MetLife Stadium, East Rutherford NJ', fb, evs).getTime() === fb.ge
 ok(koKickoff('Lumen Field, Seattle WA', new Date('2026-07-12T00:00Z'), evs).getTime() === Date.parse('2026-07-12T00:00Z'),
    'koKickoff should ignore events beyond the binding tolerance');
 
-if (!process.exitCode) console.log('OK: bracket wiring consistent (31 matches, proper tree, chronology, anchors, koKickoff)');
+if (!process.exitCode) console.log('OK: bracket wiring consistent (32 matches, proper tree, chronology, anchors, koKickoff)');

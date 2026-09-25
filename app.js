@@ -315,6 +315,11 @@ function resolveFeed(spec, ranked, complete, thirdAssign, groupStageDone, koById
     const src = koById[spec.w];
     return src && src.winnerCode ? teamByCode[src.winnerCode] : null;
   }
+  if (spec.l) {
+    const src = koById[spec.l];
+    if (!src || !src.winnerCode || !src.home || !src.away) return null;
+    return src.home.code === src.winnerCode ? src.away : src.home;
+  }
   return null;
 }
 
@@ -602,10 +607,10 @@ function knockoutMatchById(id) {
   for (const r of KNOCKOUT_ROUNDS) for (const m of r.matches) if (m.id === id) return m;
 }
 function openKnockoutById(id) { const m = knockoutMatchById(id); if (m) openKnockoutModal(m); }
-// Short round badge from the match id (R32M1→R32, QF1→QF, FIN→F).
+// Short round badge from the match id (R32M1→R32, QF1→QF, TP→3rd, FIN→F).
 function koBadge(id) {
   return id.startsWith('R32') ? 'R32' : id.startsWith('R16') ? 'R16'
-       : id.startsWith('QF') ? 'QF' : id.startsWith('SF') ? 'SF' : 'F';
+       : id.startsWith('QF') ? 'QF' : id.startsWith('SF') ? 'SF' : id === 'TP' ? '3rd' : 'F';
 }
 // One team cell — flag + name when known, else the bracket feed label (TBD / Winner A …).
 function teamCell(team, feedSpec) {
@@ -729,6 +734,7 @@ function feedLabel(spec) {
   if (spec.gw) return `Winner ${spec.gw}`;
   if (spec.gr) return `2nd ${spec.gr}`;
   if (spec.g3) return `3rd · ${spec.g3.join('/')}`;
+  if (spec.l) return `Loser ${spec.l}`;
   return 'TBD';
 }
 // Lay the bracket out as a wallchart: order each round so the two matches that
@@ -759,7 +765,11 @@ function renderRecap() {
   const fin = knockoutMatchById('FIN');
   const champ = teamByCode[fin.winnerCode];
   const runnerUp = koLoser('FIN');
-  const semis = [koLoser('SF1'), koLoser('SF2')].filter(Boolean);
+  const third = knockoutMatchById('TP');
+  const bronze = third && third.status === 'final' && third.winnerCode ? teamByCode[third.winnerCode] : null;
+  // Once the third-place match is decided the bronze medalist replaces the
+  // generic semifinalists row.
+  const semis = bronze ? [] : [koLoser('SF1'), koLoser('SF2')].filter(Boolean);
 
   // Aggregate every finished match (group + knockout) with a real score.
   let played = 0, goals = 0, biggest = null;
@@ -799,6 +809,7 @@ function renderRecap() {
       <div class="recap-podium">
         ${podiumRow('🥇', 'Champions', champ)}
         ${podiumRow('🥈', 'Runners-up', runnerUp)}
+        ${podiumRow('🥉', 'Third place', bronze)}
         ${semisRow}
       </div>
       <div class="recap-stats">
@@ -822,6 +833,8 @@ function bracketDisplayOrder() {
     if (f.away && f.away.w) walk(f.away.w);
     if (byId[id]) order[code(id)].push(byId[id]);
   })('FIN');
+  // The third-place match isn't in the winners' tree; it sits under the Final.
+  if (byId.TP) order.FIN.push(byId.TP);
   return [order.R32, order.R16, order.QF, order.SF, order.FIN];
 }
 
@@ -855,7 +868,6 @@ function renderBracket() {
       return;
     }
     col.className = 'bracket-round';
-    const isFinal = round.label.includes('FINAL');
 
     col.innerHTML = `<div class="bracket-round-label">${round.label} <span class="brl-chev">▾</span></div>`;
     col.querySelector('.bracket-round-label').onclick = toggle;
@@ -867,7 +879,7 @@ function renderBracket() {
       cell.className = 'bracket-cell';
 
       const mc = document.createElement('div');
-      mc.className = `bracket-match${isFinal?' final-card':''}${m.status==='live'?' is-live':''}`;
+      mc.className = `bracket-match${m.id==='FIN'?' final-card':''}${m.status==='live'?' is-live':''}`;
       mc.onclick = () => openKnockoutModal(m);
 
       const f = FEEDS[m.id] || {};
