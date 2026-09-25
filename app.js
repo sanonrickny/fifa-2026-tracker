@@ -10,8 +10,7 @@ let groupExpanded = false; // Full Schedule: whether the finished group stage is
 let lastRenderSig = null;  // skip redundant full re-renders (preserves scroll/interaction)
 
 // Tournament data window + persistence
-const TOURNAMENT_START = '20260611';
-const TOURNAMENT_END   = '20260719';
+const TOURNAMENT_YEAR = '2026';
 const LS_KEY = 'rickcup_results_v2';
 let espnEvents = [];            // raw ESPN events from the full-range fetch
 let koResultsCache = {};        // knockout match id -> {status, winnerCode, scoreByCode} (persisted fallback)
@@ -92,7 +91,9 @@ async function fetchScores() {
     // tournament (with scores + a winner flag), so completed games always count.
     // ESPN caps the response at 100 events by default and the tournament has
     // 104 — without `limit` the semifinals and final are silently dropped.
-    const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/FIFA.World/scoreboard?dates=${TOURNAMENT_START}-${TOURNAMENT_END}&limit=200`;
+    // A YYYYMMDD-YYYYMMDD range now returns 400, so ask for the whole year:
+    // every FIFA.World event in 2026 is this tournament.
+    const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/FIFA.World/scoreboard?dates=${TOURNAMENT_YEAR}&limit=200`;
     const resp = await fetch(url);
     if (resp.ok) {
       const data = await resp.json();
