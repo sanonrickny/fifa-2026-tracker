@@ -1073,9 +1073,11 @@ function renderProbability(m, odds) {
     </div>
   `;
 
-  // Animate bars after a tick
+  // Animate bars after a tick. The modal may have switched matches (and
+  // replaced these bars) in between, so bail if they're gone.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
+      if (!document.getElementById('pb-home')) return;
       document.getElementById('pb-home').style.width = homePct + '%';
       document.getElementById('pb-draw').style.width = drawPct + '%';
       document.getElementById('pb-away').style.width = awayPct + '%';
