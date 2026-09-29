@@ -11,6 +11,7 @@ Live at [fifa-2026-tracker.web.app](https://fifa-2026-tracker.web.app/).
 → Bracket and standings that update automatically  
 → Fully responsive, works well on mobile  
 → Installable as a PWA: add it to your home screen  
+→ Opens offline with the last scores it saw  
 
 ## Stack
 
