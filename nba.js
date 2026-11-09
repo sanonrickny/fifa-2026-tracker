@@ -430,7 +430,7 @@ function nbaDetail(g) {
     <tbody>${g.teams.map(t => `<tr class="${t.winner ? 'won' : ''}"><td>${nbaLogo(t)}${nbaEsc(t.abbr)}</td>${Array.from({ length: n }, (_, i) => `<td>${t.q[i] ?? ''}</td>`).join('')}<td><b>${t.score}</b></td></tr>`).join('')}</tbody>
   </table>` : '';
   const leaders = g.teams.some(t => t.lead.length) ? `<div class="nba-leaders">${g.teams.map(t => `
-    <div><div class="nba-leaders-team">${nbaLogo(t)}${nbaEsc(t.abbr)}${t.rec ? `<span>${nbaEsc(t.rec)}</span>` : ''}</div>
+    <div><div class="nba-leaders-team">${nbaLogo(t)}${nbaEsc(t.abbr)}${t.rec && !played ? `<span>Season ${nbaEsc(t.rec)}</span>` : ''}</div>
       ${t.lead.map(l => `<div class="nba-leader"><b>${nbaEsc(l.v)}</b> ${nbaEsc(l.k)} <span>${nbaEsc(l.n)}</span></div>`).join('')}</div>`).join('')}</div>` : '';
   el.innerHTML = (g.headline ? `<div class="nba-headline">${nbaEsc(g.headline)}</div>` : '')
     + line
