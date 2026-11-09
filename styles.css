@@ -773,3 +773,37 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ── NBA CUP TAB ── reuses the bracket, group, and schedule components */
+.nba-logo { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+.nba-logo-lg { width: 52px; height: 52px; object-fit: contain; display: block; }
+.nba-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+.nba-step {
+  background: var(--card); border-radius: 10px; box-shadow: var(--shadow);
+  padding: 0.55rem 0.65rem; font-size: 0.7rem; line-height: 1.35; color: var(--muted);
+}
+.nba-step b {
+  display: block; color: var(--ink); margin-bottom: 0.15rem;
+  font-family: var(--font-display); font-size: 0.9rem; letter-spacing: 0.03em; text-transform: uppercase;
+}
+.nba-title {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.2rem;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  margin: 1.4rem 0 0.6rem;
+  display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
+}
+.nba-title span {
+  font-family: var(--font-body); font-weight: 600; font-size: 0.68rem;
+  letter-spacing: 0.02em; text-transform: none; color: var(--muted);
+}
+.nba-title i { font-style: normal; }
+.nba-bracket-wrap { max-height: none; }
+.nba-bracket-wrap .bracket-round { min-width: 150px; }
+.nba-bracket-wrap .bracket-round-label { cursor: default; }
+.nba-seed { font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); }
+.nba-proj { color: var(--muted); }
+.nba-champ { cursor: default; margin: 0 auto 0.85rem; max-width: 480px; }
+.standings-table .nba-diff { width: 3.2rem; }
+.modal.nba .watch-wrap, .modal.nba.nba-noprob .prob-section { display: none; }
+.prob-label .nba-logo { vertical-align: middle; }
+.nba-bracket-wrap .bracket-cell { padding: 0.35rem 0; }

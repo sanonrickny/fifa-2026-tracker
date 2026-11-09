@@ -228,7 +228,8 @@ function eventNearKickoff(ev, kickoffUTC) {
 
 function updateLiveBadge() {
   // Knockout matches live outside matchesById — count both.
-  document.getElementById('liveBadge').style.display = getLiveMatches().length ? 'flex' : 'none';
+  const nbaLive = typeof nbaLiveCount === 'function' && nbaLiveCount();
+  document.getElementById('liveBadge').style.display = getLiveMatches().length || nbaLive ? 'flex' : 'none';
 }
 
 // ─── QUALIFICATION + BRACKET ENGINE (Approach A) ──────────────────────────────
@@ -1381,6 +1382,7 @@ function getMatchday(id) {
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
   document.body.style.overflow = '';
+  document.getElementById('modal').classList.remove('nba', 'nba-noprob'); // NBA modal hides soccer-only sections
   currentModalId = null;
   // Drop the match hash. If we pushed it, go back so history stays clean; a
   // direct-link landing never pushed, so rewrite in place instead of leaving
@@ -1459,6 +1461,7 @@ function openById(id) {
   const ko = knockoutMatchById(id);
   if (ko) openKnockoutModal(ko);
   else if (matchesById[id]) openModal(id);
+  else if (id.startsWith('NBA') && typeof openNbaModal === 'function') openNbaModal(id.slice(3));
 }
 
 window.addEventListener('popstate', () => {
@@ -1477,6 +1480,12 @@ function showTab(name, btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`panel-${name}`).classList.add('active');
   btn.classList.add('active');
+  // The NBA tab is its own competition: swap the header and hide the World Cup strip.
+  const nba = name === 'nba';
+  document.getElementById('nowStrip').style.display = nba ? 'none' : '';
+  document.getElementById('brand').innerHTML = nba
+    ? '<span class="brand-ball">🏀</span> NBA Cup'
+    : '<span class="brand-ball">⚽</span> World Cup 26';
 }
 
 // ─── RENDER ALL ───────────────────────────────────────────────────────────────

@@ -9,7 +9,8 @@
       ".github/**",
       "docs/**",
       "README.md",
-      "test_bracket.js"
+      "test_bracket.js",
+      "test_nba.js"
     ],
     "rewrites": [
       {

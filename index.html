@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="WC26" />
-  <meta name="description" content="Live scores, schedule, bracket, and standings for the 2026 World Cup, in your local time." />
+  <meta name="description" content="Live scores, schedule, bracket, and standings for the 2026 World Cup and the NBA Cup, in your local time." />
   <meta property="og:title" content="World Cup 26 Live" />
   <meta property="og:description" content="Live scores, schedule, bracket, and standings for the 2026 World Cup, in your local time." />
   <meta property="og:type" content="website" />
@@ -31,7 +31,7 @@
 <body>
 
 <header class="site-header">
-  <div class="brand"><span class="brand-ball">⚽</span> World Cup 26</div>
+  <div class="brand" id="brand"><span class="brand-ball">⚽</span> World Cup 26</div>
   <span class="last-updated" id="lastUpdated"></span>
   <button class="notify-btn" id="notifyBtn" onclick="toggleNotify()" aria-pressed="false" aria-label="Goal alerts off">🔕</button>
   <div class="live-badge" id="liveBadge" style="display:none">
@@ -56,6 +56,10 @@
   <div class="panel" id="panel-groups">
     <div class="groups-grid" id="groupsGrid"></div>
   </div>
+
+  <div class="panel" id="panel-nba">
+    <div id="nbaEl"></div>
+  </div>
 </main>
 
 <nav class="tabbar">
@@ -70,6 +74,10 @@
   <button class="tab-btn" onclick="showTab('groups', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
     Groups
+  </button>
+  <button class="tab-btn" id="tabNba" onclick="showTab('nba', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3 3 3 9.800 0 12.800M18.400 5.600c-3 3-3 9.800 0 12.800"/></svg>
+    NBA
   </button>
 </nav>
 
@@ -116,16 +124,19 @@
         <div id="probContent"><div class="prob-loading">Loading odds…</div></div>
       </div>
 
+      <div class="watch-wrap">
       <div class="watch-section-title">Watch free</div>
       <div class="watch-links" id="mFreeLinks"></div>
 
       <div class="watch-section-title">Streaming</div>
       <div class="watch-links" id="mPaidLinks"></div>
+      </div>
     </div>
   </div>
 </div>
 
 <script src="data.js"></script>
 <script src="app.js"></script>
+<script src="nba.js"></script>
 </body>
 </html>
