@@ -54,9 +54,12 @@ const nbaConf = abbr => NBA_EAST.has(abbr) ? 'East' : 'West';
 const nbaReal = g => g.teams.every(t => t.abbr !== 'TBD');
 
 // Group standings + the 8 projected knockout seeds, from group-play results.
-// ponytail: tiebreaks are wins, head-to-head, point diff, points scored. The
-// NBA's full list (overtime-adjusted diff, prior-season record, draw) is not
-// modelled; once ESPN names the quarterfinalists the bracket uses those instead.
+// NBA Cup rules: only the 4 group games count (not the season record). A group
+// is ordered by record, then head-to-head, point differential, points scored.
+// Each group winner advances, plus one wild card per conference: the best
+// runner-up. Winners are seeded 1-3 by record, the wild card is seed 4.
+// ponytail: the NBA's last two tiebreakers (prior-season record, random draw)
+// are not modelled; once ESPN names the quarterfinalists the bracket uses those.
 // `cutoff` (ISO date) ignores results from that moment on, to rebuild an
 // earlier table for the movement arrows.
 function nbaStandings(games, cutoff) {
@@ -67,6 +70,8 @@ function nbaStandings(games, cutoff) {
   Object.values(games).filter(g => g.round === 'GP' && nbaReal(g)).sort((x, y) => x.date.localeCompare(y.date)).forEach(g => {
     const [a, b] = g.teams.map(team);
     a.opp.add(b.abbr); b.opp.add(a.abbr);
+    // Season record: the next unplayed game carries the current one.
+    g.teams.forEach((x, i) => { const m = i ? b : a; if (g.status === 'final') m.lastRec = x.rec; else if (!m.season) m.season = x.rec; });
     if (g.status !== 'final' || (cutoff && g.date >= cutoff)) return;
     const [sa, sb] = g.teams.map(x => x.score);
     a.pf += sa; a.pa += sb; b.pf += sb; b.pa += sa;
@@ -75,13 +80,16 @@ function nbaStandings(games, cutoff) {
     win.form.push('W'); lose.form.push('L');
   });
 
-  const base = (a, b) => b.w - a.w || a.l - b.l;
+  // Win percentage first: mid-stage, teams have played different numbers of games.
+  const pct = x => x.w + x.l ? x.w / (x.w + x.l) : 0;
+  const base = (a, b) => pct(b) - pct(a) || b.w - a.w || a.l - b.l;
   const tail = (a, b) => (b.pf - b.pa) - (a.pf - a.pa) || b.pf - a.pf || a.abbr.localeCompare(b.abbr);
   const h2h = (a, b) => a.beat.has(b.abbr) ? -1 : b.beat.has(a.abbr) ? 1 : 0;
   const inGroup = (a, b) => base(a, b) || h2h(a, b) || tail(a, b);
   const across = (a, b) => base(a, b) || tail(a, b);
 
   // A group is a team plus everyone it plays in group play.
+  Object.values(t).forEach(m => { m.season = m.season || m.lastRec || ''; });
   const groups = [], seen = new Set();
   Object.keys(t).sort().forEach(abbr => {
     if (seen.has(abbr)) return;
@@ -124,14 +132,17 @@ function nbaBracket(games, st) {
   const qf = [], sf = [];
   ['East', 'West'].forEach(conf => {
     const s = st.seeds[conf] || [];
-    const pairs = [[s[0], s[3]], [s[1], s[2]]];   // 1 v 4, 2 v 3
+    // 1 v 4, 2 v 3. Seeds mean nothing until every group game is played, so
+    // until then the slots only say which seed will land there.
+    const pairs = st.done ? [[s[0], s[3]], [s[1], s[2]]] : [[], []];
+    const labels = [[`${conf} #1 seed`, `${conf} wild card`], [`${conf} #2 seed`, `${conf} #3 seed`]];
     const real = ko('QF').filter(g => nbaConf(g.teams[0].abbr) === conf).slice(0, 2);
     // Projected pairs not already covered by a real game fill the open slots.
     const open = pairs.filter(p => !real.some(g => g.teams.some(x => p.some(y => y && y.abbr === x.abbr))));
     const mine = real.map(g => slot('QF', g, null, null, false, conf));
     while (mine.length < 2) {
-      const p = open.shift() || [null, null];
-      mine.push(slot('QF', null, p, [`${conf} seed`, `${conf} seed`], p[0] && p[1], conf));
+      const p = open.shift() || [];
+      mine.push(slot('QF', null, [p[0] || null, p[1] || null], labels[mine.length], p[0] && p[1], conf));
     }
     qf.push(...mine);
     const realSF = ko('SF').find(g => nbaConf(g.teams[0].abbr) === conf);
@@ -247,19 +258,19 @@ function nbaNowHTML(all) {
   if (!next) return '';
   return `<div class="next-card" onclick="openNbaModal('${next.id}')">
     ${side(next.teams[0])}
-    <div class="lmc-center"><span class="next-chip">Next</span><span class="next-time">${nbaWhen(next)}</span></div>
+    <div class="lmc-center"><span class="next-chip">Next Cup game</span><span class="next-time">${nbaWhen(next)}</span></div>
     ${side(next.teams[1])}
   </div>`;
 }
 
 // One tile of the "who has won what" strip: the decided team, or who leads now.
-function nbaWinnerTile(title, team, leader, cls) {
+function nbaWinnerTile(title, team, note, cls) {
   return `<div class="nba-win ${cls || ''}${team ? ' decided' : ''}">
     <div class="nba-win-title">${title}</div>
     ${team
       ? `<div class="nba-win-team">${nbaLogo(team)}${nbaEsc(team.name)}</div>`
       : `<div class="nba-win-team tbd">Undecided</div>
-         ${leader ? `<div class="nba-win-sub">Top seed now: ${nbaEsc(leader.name)}</div>` : ''}`}
+         ${note ? `<div class="nba-win-sub">${note}</div>` : ''}`}
   </div>`;
 }
 
@@ -269,16 +280,20 @@ function nbaPictureCard(conf, st) {
   const chasing = st.groups.filter(g => g.conf === conf).map(g => g.teams[1])
     .filter(t => t && !seeds.includes(t)).sort(st.across);
   const row = (t, tag, cls) => `<tr>
-    <td><div class="team-cell"><span class="team-pos ${cls}">${t.seed || '–'}</span>${nbaLogo(t)}<span class="team-name">${nbaEsc(t.name)}</span></div></td>
-    <td class="nba-tag">${tag}</td><td>${t.w}-${t.l}</td><td>${nbaDiff(t)}</td></tr>`;
+    <td><div class="team-cell"><span class="team-pos ${cls}">${t.seed || '–'}</span>${nbaLogo(t)}<span class="team-name">${nbaEsc(t.name)}</span>${tag ? `<span class="nba-chip">${tag}</span>` : ''}</div></td>
+    <td>${t.w}-${t.l}</td><td>${nbaDiff(t)}</td><td>${nbaEsc(t.season)}</td></tr>`;
   return `<div class="group-card">
-    <div class="group-header"><div class="group-label">${conf}</div><div class="nba-head-note">${st.done ? 'Final seeds' : 'In right now'}</div></div>
+    <div class="group-header"><div class="group-label">${conf}</div><div class="nba-head-note">${st.done ? 'Final seeds' : 'Not final'}</div></div>
     <table class="standings-table">
-      <colgroup><col class="col-team"><col class="nba-col-tag"><col class="nba-col-rec"><col class="nba-col-rec"></colgroup>
-      <thead><tr><th>Seed</th><th></th><th>W-L</th><th>Diff</th></tr></thead>
+      <colgroup><col class="col-team"><col class="nba-col-rec"><col class="nba-col-rec"><col class="nba-col-season"></colgroup>
+      <thead><tr><th>Team</th><th>Cup</th><th>Diff</th><th>Season</th></tr></thead>
       <tbody>
-        ${seeds.map(t => row(t, t.q === 'wc' ? 'Wild card' : 'Leader', t.q === 'wc' ? 'pos-m' : 'pos-q')).join('')}
-        ${chasing.map(t => row(t, 'Chasing', '')).join('')}
+        <tr class="nba-sub"><td colspan="4">Group leaders</td></tr>
+        ${seeds.filter(t => t.q !== 'wc').map(t => row(t, '', 'pos-q')).join('')}
+        <tr class="nba-sub"><td colspan="4">Wild card: best second place</td></tr>
+        ${seeds.filter(t => t.q === 'wc').map(t => row(t, '', 'pos-m')).join('')}
+        ${chasing.length ? `<tr class="nba-sub"><td colspan="4">${st.done ? 'Missed out' : 'Next in line for the wild card'}</td></tr>` : ''}
+        ${chasing.map(t => row(t, '', '')).join('')}
       </tbody>
     </table>
   </div>`;
@@ -344,6 +359,12 @@ function renderNba() {
   const prev = lastFinal ? nbaStandings(nbaGames, new Date(new Date(lastFinal.date) - 12 * 3600e3).toISOString()) : null;
   const [qf, sf, fin] = nbaBracket(nbaGames, st);
   const projected = qf.some(m => m.projected);
+  // Round dates come from ESPN's placeholder events (parked at midnight ET).
+  const day = g => new Date(g.date).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric' });
+  const span = r => {
+    const d = [...new Set(all.filter(g => g.round === r).map(day))];
+    return d.length > 1 ? `${d[0]} to ${d[d.length - 1]}` : d[0] || '';
+  };
   const played = all.filter(g => g.round === 'GP' && g.status === 'final').length;
   const total = all.filter(g => g.round === 'GP').length;
 
@@ -351,34 +372,36 @@ function renderNba() {
 
   bracketEl.innerHTML = `
     <div class="nba-winners">
-      ${nbaWinnerTile('East winner', sf[0].winner, st.seeds.East[0])}
-      ${nbaWinnerTile('🏆 Cup champion', fin[0].winner, null, 'champ')}
-      ${nbaWinnerTile('West winner', sf[1].winner, st.seeds.West[0])}
+      ${nbaWinnerTile('East winner', sf[0].winner, span('SF') && `Semifinal ${span('SF')}`)}
+      ${nbaWinnerTile('🏆 Cup champion', fin[0].winner, span('F') && `Final ${span('F')}`, 'champ')}
+      ${nbaWinnerTile('West winner', sf[1].winner, span('SF') && `Semifinal ${span('SF')}`)}
     </div>
     <div class="nba-progress">
       <div class="nba-progress-bar"><div style="width:${total ? played / total * 100 : 0}%"></div></div>
-      <span>${st.done ? 'Group play complete' : `Group play: ${played} of ${total} games`}</span>
+      <span>${st.done ? 'Group play complete' : `Group play: ${played} of ${total} games, ends ${span('GP').split(' to ').pop()}`}</span>
     </div>
 
-    <div class="nba-title">Bracket${projected ? '<span>if group play ended today</span>' : ''}</div>
+    <div class="nba-title">Bracket<span>${!st.done ? 'Teams are set when group play ends' : projected ? 'Seeds from the final group standings' : ''}</span></div>
     <div class="bracket-wrapper nba-bracket-wrap"><div class="bracket">
       ${[qf, sf, fin].map((r, i) => `<div class="bracket-round">
-        <div class="bracket-round-label">${['Quarterfinals', 'Semifinals', 'Championship'][i]}</div>
+        <div class="bracket-round-label">${['Quarterfinals', 'Semifinals', 'Championship'][i]}<small>${span(['QF', 'SF', 'F'][i])}</small></div>
         <div class="bracket-body">${r.map(nbaBracketCell).join('')}</div>
       </div>`).join('')}
     </div></div>
 
-    <div class="nba-title">Playoff picture<span>8 of 30 advance</span></div>
+    <div class="nba-title">${st.done ? 'Who advanced' : 'If group play ended today'}</div>
+    <p class="nba-note">4 teams per conference reach the quarterfinals: the 3 group leaders and 1 wild card (the best second-place team). <b>Cup</b> is the record in Cup games only, which is all that counts here. <b>Season</b> is the full NBA record.</p>
     <div class="groups-grid">${nbaPictureCard('East', st)}${nbaPictureCard('West', st)}</div>
 
     <div class="nba-title">How it works</div>
     <div class="nba-steps">
-      <div class="nba-step"><b>1 · Groups</b>6 groups of 5. Everyone plays 4 games.</div>
+      <div class="nba-step"><b>1 · Groups</b>6 groups of 5. Everyone plays 4 Cup games.</div>
       <div class="nba-step"><b>2 · Eight advance</b>Each group winner, plus 1 wild card per conference.</div>
       <div class="nba-step"><b>3 · Knockout</b>Lose once and you're out.</div>
     </div>`;
 
   document.getElementById('nbaGroupsEl').innerHTML = `
+    <p class="nba-note">Cup games only. A team's season record is separate and does not count.</p>
     <div class="nba-legend"><i class="pos-q">●</i> group leader <i class="pos-m">●</i> wild card
       <span class="nba-up">▲</span><span class="nba-down">▼</span> moved last game night
       <span class="nba-form"><i class="W"></i></span> win <span class="nba-form"><i class="L"></i></span> loss</div>
@@ -387,6 +410,7 @@ function renderNba() {
   const past = all.filter(g => getDateKey(new Date(g.date), nbaTZ(g)) < todayKey);
   const current = all.filter(g => !past.includes(g));
   document.getElementById('nbaScheduleEl').innerHTML = `
+    <p class="nba-note">Only Cup games are listed. Regular NBA games on other nights are not part of the Cup.</p>
     ${past.length ? `
       <div class="past-toggle-bar ${nbaPastOpen ? 'open' : ''}" onclick="nbaTogglePast()">
         <span class="ptb-arrow">▸</span>

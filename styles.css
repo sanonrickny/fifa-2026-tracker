@@ -871,3 +871,17 @@ body.sport-nba #nowStrip, body:not(.sport-nba) #nbaNow, body.sport-nba .notify-b
 .nba-leaders-team span, .nba-leader span { color: var(--muted); font-weight: 500; }
 .nba-leaders-team span { font-family: var(--font-mono); font-size: 0.68rem; }
 .nba-leader { font-size: 0.76rem; line-height: 1.6; }
+.nba-note { font-size: 0.74rem; line-height: 1.45; color: var(--muted); margin: 0 0 0.7rem; }
+.nba-note b { color: var(--ink); }
+.bracket-round-label small { display: block; font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.04em; font-weight: 700; }
+.standings-table .nba-col-tag { width: 4.6rem; }
+.nba-winners + .nba-progress { flex-wrap: wrap; }
+.standings-table .nba-col-season { width: 4rem; }
+.nba-chip {
+  font-size: 0.56rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--brass); border: 1px solid currentColor; border-radius: 4px; padding: 0.05rem 0.25rem; flex-shrink: 0;
+}
+.standings-table tr.nba-sub td {
+  font-family: var(--font-body); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; text-align: left; color: var(--muted); background: var(--bg); padding: 0.3rem 0.65rem;
+}

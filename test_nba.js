@@ -39,6 +39,13 @@ ok(st.seeds.East.map(t => t.abbr).join() === 'NY,CLE,ATL,ORL', 'East seeds: ' + 
 ok(st.groups[0].teams[0].form.join('') === 'WWWW' && nbaStandings(games, '2026-01-01').groups[0].teams[0].w === 0, 'form tracked; cutoff rewinds the table');
 ok(st.seeds.East[3].q === 'wc' && st.seeds.East[0].q === 'win', 'wild card flagged');
 
+// Mid group play nothing is seeded: the bracket shows slot labels, not teams.
+const first = Object.keys(games)[0];
+const partial = { ...games, [first]: { ...games[first], status: 'upcoming' } };
+const mid = nbaStandings(partial);
+ok(!mid.done && nbaBracket(partial, mid)[0].every(m => !m.projected && m.teams.every(x => x == null)), 'no teams in the bracket before group play ends');
+ok(nbaBracket(partial, mid)[0][0].labels.join() === 'East #1 seed,East wild card', 'slot labels');
+
 let [qf, sf, fin] = nbaBracket(games, st);
 ok(qf.length === 4 && sf.length === 2 && fin.length === 1, '4-2-1 tree');
 ok(qf.every(m => m.projected), 'quarterfinals projected before ESPN names them');
