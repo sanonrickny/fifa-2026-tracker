@@ -1,7 +1,7 @@
 // Service worker: cache the app shell so the app installs to the home screen
 // and opens instantly (with the last localStorage-cached scores) when offline.
 // Network-first so a deploy shows up on the next load, cache is the fallback.
-const CACHE = 'rickcup-v3';
+const CACHE = 'rickcup-v4';
 const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'nba.js', 'data.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

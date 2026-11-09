@@ -36,6 +36,7 @@ ok(st.done, 'group play complete');
 ok(st.groups[0].teams.map(t => t.w).join('') === '43210', 'group sorted by wins');
 // Later groups win by more, so seeds run group 3, 2, 1; wild card is the best runner-up.
 ok(st.seeds.East.map(t => t.abbr).join() === 'NY,CLE,ATL,ORL', 'East seeds: ' + st.seeds.East.map(t => t.abbr));
+ok(st.groups[0].teams[0].form.join('') === 'WWWW' && nbaStandings(games, '2026-01-01').groups[0].teams[0].w === 0, 'form tracked; cutoff rewinds the table');
 ok(st.seeds.East[3].q === 'wc' && st.seeds.East[0].q === 'win', 'wild card flagged');
 
 let [qf, sf, fin] = nbaBracket(games, st);

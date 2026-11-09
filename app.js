@@ -419,8 +419,9 @@ function loadResults() {
 function updateTimestamp() {
   const el = document.getElementById('lastUpdated');
   if (!el) return;
-  if (!lastUpdated) { el.textContent = ''; return; }
-  const t = formatTime(new Date(lastUpdated), userTZ);
+  const stamp = sport === 'nba' ? (typeof nbaUpdated === 'undefined' ? null : nbaUpdated) : lastUpdated;
+  if (!stamp) { el.textContent = ''; return; }
+  const t = formatTime(new Date(stamp), userTZ);
   el.textContent = navigator.onLine === false ? `Offline · last ${t}` : `Updated ${t}`;
 }
 
@@ -1475,17 +1476,25 @@ window.addEventListener('popstate', () => {
 });
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
-function showTab(name, btn) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(`panel-${name}`).classList.add('active');
-  btn.classList.add('active');
-  // The NBA tab is its own competition: swap the header and hide the World Cup strip.
-  const nba = name === 'nba';
-  document.getElementById('nowStrip').style.display = nba ? 'none' : '';
-  document.getElementById('brand').innerHTML = nba
-    ? '<span class="brand-ball">🏀</span> NBA Cup'
-    : '<span class="brand-ball">⚽</span> World Cup 26';
+// Two competitions share one shell: the header picks the sport, the tab bar
+// picks Bracket / Schedule / Groups within it. NBA panels are `panel-nba-*`.
+const SPORT_KEY = 'rickcup_sport';
+let sport = 'wc', currentTab = 'bracket';
+try { if (localStorage.getItem(SPORT_KEY) === 'nba') sport = 'nba'; } catch (e) {}
+
+function applyView() {
+  document.body.classList.toggle('sport-nba', sport === 'nba');
+  const id = (sport === 'nba' ? 'panel-nba-' : 'panel-') + currentTab;
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === id));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === currentTab));
+  document.querySelectorAll('.sport-btn').forEach(b => b.classList.toggle('active', b.dataset.sport === sport));
+  updateTimestamp();
+}
+function showTab(name) { currentTab = name; applyView(); }
+function setSport(s) {
+  sport = s;
+  try { localStorage.setItem(SPORT_KEY, s); } catch (e) {}
+  applyView();
 }
 
 // ─── RENDER ALL ───────────────────────────────────────────────────────────────
@@ -1625,7 +1634,7 @@ buildMatches();
 loadResults();          // hydrate cached results so the page starts populated
 computeQualification(); // build standings + bracket from cache before first paint
 renderAll();
-updateTimestamp();
+applyView();
 
 // Deep link: a shared URL like /#QF1 opens that match's modal on load
 if (location.hash) openById(location.hash.slice(1));

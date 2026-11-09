@@ -9,7 +9,7 @@ Live at [fifa-2026-tracker.web.app](https://fifa-2026-tracker.web.app/).
 → Live scores as matches happen  
 → Full schedule in your local time, detected automatically  
 → Bracket and standings that update automatically  
-→ NBA tab: the NBA Cup bracket, group standings, and games, pulled live  
+→ Switch between the World Cup and the NBA Cup in the header: each has its own bracket, schedule, and groups, pulled live  
 → Fully responsive, works well on mobile  
 → Installable as a PWA: add it to your home screen  
 → Opens offline with the last scores it saw  

@@ -802,8 +802,72 @@ body {
 .nba-bracket-wrap .bracket-round-label { cursor: default; }
 .nba-seed { font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted); }
 .nba-proj { color: var(--muted); }
-.nba-champ { cursor: default; margin: 0 auto 0.85rem; max-width: 480px; }
 .standings-table .nba-diff { width: 3.2rem; }
 .modal.nba .watch-wrap, .modal.nba.nba-noprob .prob-section { display: none; }
 .prob-label .nba-logo { vertical-align: middle; }
 .nba-bracket-wrap .bracket-cell { padding: 0.35rem 0; }
+
+/* ── SPORT SWITCH (header) + NBA tabs ── */
+.sport-switch { display: flex; gap: 0.25rem; flex: 1; min-width: 0; }
+.sport-btn {
+  background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.55);
+  font-family: var(--font-display); font-weight: 800; font-size: 1rem;
+  letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap;
+  padding: 0.3rem 0.6rem; border-radius: 999px;
+}
+.sport-btn.active { background: rgba(255,255,255,0.16); color: #fff; }
+body.sport-nba #nowStrip, body:not(.sport-nba) #nbaNow, body.sport-nba .notify-btn { display: none; }
+.modal:not(.nba) #nbaDetail { display: none; }
+.lmc-flag .nba-logo { width: 30px; height: 30px; display: block; }
+
+.nba-winners { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 0.5rem; align-items: stretch; }
+.nba-win {
+  background: var(--card); border-radius: 10px; box-shadow: var(--shadow);
+  padding: 0.6rem 0.5rem; text-align: center; min-width: 0;
+}
+.nba-win.champ { box-shadow: 0 0 0 2px var(--brass), var(--shadow); }
+.nba-win-title {
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+}
+.nba-win-team {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: center; gap: 0.35rem; margin-top: 0.3rem;
+}
+.nba-win-team.tbd { color: var(--muted); font-weight: 700; }
+.nba-win.decided .nba-win-team { color: var(--green); }
+.nba-win-sub { font-size: 0.64rem; color: var(--muted); margin-top: 0.15rem; }
+.nba-progress { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.7rem; font-size: 0.68rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.nba-progress-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.nba-progress-bar div { height: 100%; background: var(--green); }
+
+.nba-head-note { font-size: 0.66rem; font-weight: 600; opacity: 0.7; }
+.standings-table .nba-col-rec { width: 3.1rem; }
+.standings-table .nba-col-tag { width: 5.2rem; }
+.standings-table .nba-col-form { width: 3.6rem; }
+.standings-table td.nba-tag { font-family: var(--font-body); font-size: 0.66rem; text-align: left; }
+.nba-up, .nba-down { font-size: 0.6rem; font-weight: 700; flex-shrink: 0; }
+.nba-up { color: var(--green); }
+.nba-down { color: var(--live); }
+.nba-form { display: inline-flex; gap: 3px; vertical-align: middle; }
+.nba-form i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.nba-form i.W { background: var(--green); }
+.nba-form i.L { background: var(--live); }
+.nba-legend {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.4rem;
+  font-size: 0.68rem; color: var(--muted); margin-bottom: 0.7rem;
+}
+.nba-legend i { font-style: normal; }
+.nba-lost { color: var(--muted); font-weight: 600; }
+
+.nba-headline { font-size: 0.85rem; font-weight: 600; line-height: 1.4; margin: 0.9rem 0; }
+.nba-line { width: 100%; border-collapse: collapse; margin: 0.9rem 0; font-family: var(--font-mono); font-size: 0.78rem; }
+.nba-line th { font-size: 0.6rem; color: var(--muted); font-weight: 700; padding: 0.3rem; }
+.nba-line td { text-align: center; padding: 0.4rem 0.3rem; border-top: 1px solid var(--line); color: var(--muted); }
+.nba-line td:first-child { text-align: left; color: var(--ink); font-family: var(--font-body); font-weight: 700; display: flex; align-items: center; gap: 0.35rem; }
+.nba-line tr.won td:last-child { color: var(--green); }
+.nba-line td:last-child { color: var(--ink); }
+.nba-leaders { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.9rem; }
+.nba-leaders-team { display: flex; align-items: center; gap: 0.35rem; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
+.nba-leaders-team span, .nba-leader span { color: var(--muted); font-weight: 500; }
+.nba-leaders-team span { font-family: var(--font-mono); font-size: 0.68rem; }
+.nba-leader { font-size: 0.76rem; line-height: 1.6; }
