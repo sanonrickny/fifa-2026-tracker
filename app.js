@@ -1581,7 +1581,8 @@ if (canHover) {
   document.addEventListener('mouseover', e => { const el = e.target.closest('[data-tip]'); if (el && el !== tipFor) tipShow(el); });
   document.addEventListener('mouseout', e => { if (tipFor && !tipFor.contains(e.relatedTarget)) tipHide(); });
 }
-document.addEventListener('focusin', e => { if (e.target.dataset?.tip) tipShow(e.target); });
+// Keyboard focus only: a tap also focuses, and the click handler already toggles it.
+document.addEventListener('focusin', e => { if (e.target.dataset?.tip && e.target.matches(':focus-visible')) tipShow(e.target); });
 document.addEventListener('focusout', tipHide);
 document.addEventListener('scroll', tipHide, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') tipHide(); });

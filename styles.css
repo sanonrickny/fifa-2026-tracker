@@ -911,6 +911,7 @@ body:not([data-tab="cup"]) #nbaNow { display: none; }  /* live games already lea
   transition: opacity 0.12s;
 }
 .tip.on { opacity: 1; visibility: visible; }
+@media (hover: none) { [data-tip] { cursor: pointer; } }  /* iOS only sends taps on "clickable" elements */
 
 /* ── NBA GAMES ── */
 .day-nav {
