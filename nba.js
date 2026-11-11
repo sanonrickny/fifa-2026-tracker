@@ -9,19 +9,20 @@ const NBA_LS = 'rickcup_nba_v2';
 const NBA_EAST = new Set('ATL BOS BKN CHA CHI CLE DET IND MIA MIL NY ORL PHI TOR WSH'.split(' '));
 const NBA_ROUND = { GP: 'Group Play', QF: 'Quarterfinal', SF: 'Semifinal', F: 'Championship' };
 
-let nbaGames = {};        // ESPN event id -> slim game
-let nbaPastOpen = false;  // whether finished games are revealed in the list
+let nbaGames = {};        // ESPN event id -> slim Cup game
+let nbaToday = [];        // every game on ESPN's current scoreboard day (any kind)
+let nbaTodayKey = '';     // that day, YYYYMMDD
 let nbaLastSig = null;
 let nbaUpdated = null;    // ms timestamp of the last successful fetch
 
-// Reduce an ESPN event to the fields we render. Returns null for non-Cup games.
-function nbaSlim(ev) {
+// Reduce any ESPN NBA event to the fields we render. `round` is the Cup round,
+// or null for an ordinary season game.
+function nbaGame(ev) {
   const c = ev.competitions?.[0];
-  const note = (c?.notes || []).map(n => n.headline || '').find(h => /NBA Cup/i.test(h));
-  if (!note || (c.competitors || []).length < 2) return null;
-  const round = /group/i.test(note) ? 'GP' : /quarter/i.test(note) ? 'QF'
+  if ((c?.competitors || []).length < 2) return null;
+  const note = (c.notes || []).map(n => n.headline || '').find(h => /NBA Cup/i.test(h)) || '';
+  const round = !note ? null : /group/i.test(note) ? 'GP' : /quarter/i.test(note) ? 'QF'
               : /semi/i.test(note) ? 'SF' : /champ|final/i.test(note) ? 'F' : null;
-  if (!round) return null;
   const state = ev.status?.type?.state;
   const tv = (c.broadcasts || []).filter(b => b.market === 'national').flatMap(b => b.names || []);
   return {
@@ -48,6 +49,11 @@ function nbaSlim(ev) {
       })).filter(l => l.n),
     })),
   };
+}
+// Cup games only: everything the bracket and groups are built from.
+function nbaSlim(ev) {
+  const g = nbaGame(ev);
+  return g && g.round ? g : null;
 }
 
 const nbaConf = abbr => NBA_EAST.has(abbr) ? 'East' : 'West';
@@ -158,25 +164,38 @@ function nbaBracket(games, st) {
 async function nbaFetch(full) {
   const d = new Date();
   const y = d.getMonth() >= 9 ? d.getFullYear() : d.getFullYear() - 1; // Jan-Sep: show the last Cup
-  const urls = full
-    ? ['10', '11', '12'].map(m => `${NBA_API}/scoreboard?dates=${y}${m}&limit=500`)
-    : [`${NBA_API}/scoreboard`];
+  const urls = [`${NBA_API}/scoreboard`].concat(full
+    ? ['10', '11', '12'].map(m => `${NBA_API}/scoreboard?dates=${y}${m}&limit=500`) : []);
   const res = await Promise.all(urls.map(u => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null)));
+  if (res[0]) {
+    nbaToday = (res[0].events || []).map(nbaGame).filter(Boolean);
+    nbaTodayKey = (res[0].day?.date || '').replace(/-/g, '');
+  }
   res.forEach(data => (data?.events || []).forEach(ev => {
     const g = nbaSlim(ev);
     if (g) nbaGames[g.id] = g;
   }));
   if (res.some(Boolean)) nbaUpdated = Date.now();
-  try { localStorage.setItem(NBA_LS, JSON.stringify({ t: nbaUpdated, games: nbaGames })); } catch (e) {}
+  try { localStorage.setItem(NBA_LS, JSON.stringify({ t: nbaUpdated, games: nbaGames, today: nbaToday, day: nbaTodayKey })); } catch (e) {}
   renderNba();
+  if (typeof renderNbaGames === 'function') renderNbaGames();
   updateTimestamp();
-  const open = String(currentModalId || '').startsWith('NBA') && nbaGames[currentModalId.slice(3)];
+  if (nbaPending && nbaFind(nbaPending)) { openNbaModal(nbaPending); nbaPending = null; }
+  const open = String(currentModalId || '').startsWith('NBA') && nbaFind(currentModalId.slice(3));
   if (open) { nbaModalScore(open); nbaDetail(open); }
 }
 
-function nbaLiveCount() {
-  return Object.values(nbaGames).filter(g => g.status === 'live').length;
+// A game from any store: today's slate, a browsed day, or the Cup.
+let nbaPending = null;    // deep-linked game id not loaded yet
+function nbaFind(id) {
+  const browsed = typeof nbaDayCache === 'object' ? Object.values(nbaDayCache).flat() : [];
+  return nbaToday.concat(browsed).find(g => g.id === id) || nbaGames[id] || null;
 }
+function nbaLive() {
+  const seen = new Set();
+  return nbaToday.concat(Object.values(nbaGames)).filter(g => g.status === 'live' && !seen.has(g.id) && seen.add(g.id));
+}
+function nbaLiveCount() { return nbaLive().length; }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 const nbaEsc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
@@ -189,7 +208,7 @@ const nbaDiff = t => (t.pf - t.pa > 0 ? '+' : '') + (t.pf - t.pa);
 
 function nbaBracketCell(m) {
   const g = m.game;
-  const state = !g ? (m.projected ? 'Projected' : 'TBD')
+  const state = !g ? (m.projected ? `<span ${tip('Projected')}>Projected</span>` : 'TBD')
     : g.status === 'live' ? `<span class="live-pip"></span>${nbaEsc(g.clock)}`
     : g.status === 'final' ? 'Final' : nbaWhen(g);
   const row = (t, label) => {
@@ -207,19 +226,19 @@ function nbaBracketCell(m) {
   </div></div>`;
 }
 
+// One game row. Shared by the Games tab; Cup games carry a Cup badge.
 function nbaCard(g) {
   const live = g.status === 'live';
   const mid = g.status === 'upcoming'
     ? (g.timeValid ? formatTime(new Date(g.date), userTZ) : 'TBD')
     : nbaScore(g);
   const cls = live ? 'live-score' : g.status === 'final' ? 'final' : 'upcoming';
-  const badge = g.round === 'GP' ? (nbaReal(g) ? nbaConf(g.teams[0].abbr)[0] : 'GP') : g.round;
   return `<div class="schedule-match-card ${live ? 'is-live' : ''}" onclick="openNbaModal('${g.id}')">
-    <div class="smc-group-badge">${badge}</div>
+    ${g.round ? `<div class="smc-group-badge nba-cup-badge" ${tip('Cupgame')}>Cup</div>` : ''}
     <div class="smc-teams">
       ${g.teams.map(t => t.abbr === 'TBD'
         ? `<div class="smc-team smc-tbd">TBD</div>`
-        : `<div class="smc-team${g.status === 'final' && !t.winner ? ' nba-lost' : ''}">${nbaLogo(t)}${nbaEsc(t.name)}</div>`).join('')}
+        : `<div class="smc-team${g.status === 'final' && !t.winner ? ' nba-lost' : ''}">${nbaLogo(t)}${nbaEsc(t.name)}${t.rec ? `<span class="nba-rec" ${tip('rec')}>${nbaEsc(t.rec)}</span>` : ''}</div>`).join('')}
     </div>
     <div class="smc-right">
       <div class="smc-vs-score ${cls}">${mid}</div>
@@ -228,22 +247,7 @@ function nbaCard(g) {
   </div>`;
 }
 
-function nbaDays(list, todayKey) {
-  const byDay = {};
-  list.forEach(g => { const k = getDateKey(new Date(g.date), nbaTZ(g)); (byDay[k] = byDay[k] || []).push(g); });
-  return Object.keys(byDay).sort().map(k => `
-    <div class="schedule-day">
-      <div class="schedule-day-header">
-        <div class="schedule-date-label">${k === todayKey ? 'Today' : formatDate(new Date(byDay[k][0].date), nbaTZ(byDay[k][0]))}</div>
-        <div class="schedule-divider"></div>
-      </div>
-      <div class="schedule-matches-list">${byDay[k].map(nbaCard).join('')}</div>
-    </div>`).join('');
-}
-
-function nbaTogglePast() { nbaPastOpen = !nbaPastOpen; renderNba(); }
-
-// Live games, else the next tip-off, at the top of every NBA tab.
+// Live Cup games, else the next Cup tip-off, at the top of the Cup tab.
 function nbaNowHTML(all) {
   const side = t => `<div class="lmc-team"><span class="lmc-flag">${nbaLogo(t) || '🏀'}</span><span class="lmc-name">${nbaEsc(t.abbr)}</span></div>`;
   const live = all.filter(g => g.status === 'live');
@@ -254,7 +258,7 @@ function nbaNowHTML(all) {
         <div class="lmc-live-row"><span class="lmc-dot"></span><span class="lmc-min">${nbaEsc(g.clock)}</span></div></div>
       ${side(g.teams[1])}
     </div>`).join('')}</div>`;
-  const next = all.find(g => g.status === 'upcoming' && new Date(g.date) > Date.now());
+  const next = all.find(g => g.status === 'upcoming' && g.timeValid && new Date(g.date) > Date.now());
   if (!next) return '';
   return `<div class="next-card" onclick="openNbaModal('${next.id}')">
     ${side(next.teams[0])}
@@ -283,14 +287,14 @@ function nbaPictureCard(conf, st) {
     <td><div class="team-cell"><span class="team-pos ${cls}">${t.seed || '–'}</span>${nbaLogo(t)}<span class="team-name">${nbaEsc(t.name)}</span>${tag ? `<span class="nba-chip">${tag}</span>` : ''}</div></td>
     <td>${t.w}-${t.l}</td><td>${nbaDiff(t)}</td><td>${nbaEsc(t.season)}</td></tr>`;
   return `<div class="group-card">
-    <div class="group-header"><div class="group-label">${conf}</div><div class="nba-head-note">${st.done ? 'Final seeds' : 'Not final'}</div></div>
+    <div class="group-header"><div class="group-label" ${tip(conf)}>${conf}</div><div class="nba-head-note">${st.done ? 'Final seeds' : 'Not final'}</div></div>
     <table class="standings-table">
       <colgroup><col class="col-team"><col class="nba-col-rec"><col class="nba-col-rec"><col class="nba-col-season"></colgroup>
-      <thead><tr><th>Team</th><th>Cup</th><th>Diff</th><th>Season</th></tr></thead>
+      <thead><tr><th>Team</th>${['Cup', 'Diff', 'Season'].map(k => `<th ${tip(k)}>${k}</th>`).join('')}</tr></thead>
       <tbody>
-        <tr class="nba-sub"><td colspan="4">Group leaders</td></tr>
+        <tr class="nba-sub"><td colspan="4"><span ${tip('leader')}>Group leaders</span></td></tr>
         ${seeds.filter(t => t.q !== 'wc').map(t => row(t, '', 'pos-q')).join('')}
-        <tr class="nba-sub"><td colspan="4">Wild card: best second place</td></tr>
+        <tr class="nba-sub"><td colspan="4"><span ${tip('wildcard')}>Wild card</span></td></tr>
         ${seeds.filter(t => t.q === 'wc').map(t => row(t, '', 'pos-m')).join('')}
         ${chasing.length ? `<tr class="nba-sub"><td colspan="4">${st.done ? 'Missed out' : 'Next in line for the wild card'}</td></tr>` : ''}
         ${chasing.map(t => row(t, '', '')).join('')}
@@ -312,12 +316,12 @@ function nbaGroupCard(g, gi, prev) {
   };
   return `<div class="group-card">
     <div class="group-header">
-      <div class="group-label">${g.conf}</div>
+      <div class="group-label" ${tip(g.conf)}>${g.conf}</div>
       <div class="group-teams-mini">${g.teams.map(nbaLogo).join('')}</div>
     </div>
     <table class="standings-table">
       <colgroup><col class="col-team"><col class="col-num"><col class="col-num"><col class="nba-col-rec"><col class="nba-col-form"></colgroup>
-      <thead><tr><th>Team</th><th>W</th><th>L</th><th>Diff</th><th>Form</th></tr></thead>
+      <thead><tr><th>Team</th>${['W', 'L', 'Diff', 'Form'].map(k => `<th ${tip(k)}>${k}</th>`).join('')}</tr></thead>
       <tbody>${g.teams.map((t, i) => `<tr>
         <td><div class="team-cell"><span class="team-pos ${t.q === 'win' ? 'pos-q' : t.q === 'wc' ? 'pos-m' : ''}">${i + 1}</span>${nbaLogo(t)}<span class="team-name">${nbaEsc(t.name)}</span>${moved(t)}</div></td>
         <td>${t.w}</td><td>${t.l}</td><td>${nbaDiff(t)}</td>
@@ -344,7 +348,7 @@ function renderNba() {
   const bracketEl = document.getElementById('nbaBracketEl');
   if (!bracketEl) return;
   const todayKey = getDateKey(new Date(), userTZ);
-  const sig = JSON.stringify(nbaGames) + nbaPastOpen + todayKey + userTZ;
+  const sig = JSON.stringify(nbaGames) + todayKey + userTZ;
   if (sig === nbaLastSig) return;
   nbaLastSig = sig;
   updateLiveBadge();
@@ -390,7 +394,6 @@ function renderNba() {
     </div></div>
 
     <div class="nba-title">${st.done ? 'Who advanced' : 'If group play ended today'}</div>
-    <p class="nba-note">4 teams per conference reach the quarterfinals: the 3 group leaders and 1 wild card (the best second-place team). <b>Cup</b> is the record in Cup games only, which is all that counts here. <b>Season</b> is the full NBA record.</p>
     <div class="groups-grid">${nbaPictureCard('East', st)}${nbaPictureCard('West', st)}</div>
 
     <div class="nba-title">How it works</div>
@@ -401,23 +404,12 @@ function renderNba() {
     </div>`;
 
   document.getElementById('nbaGroupsEl').innerHTML = `
-    <p class="nba-note">Cup games only. A team's season record is separate and does not count.</p>
-    <div class="nba-legend"><i class="pos-q">●</i> group leader <i class="pos-m">●</i> wild card
-      <span class="nba-up">▲</span><span class="nba-down">▼</span> moved last game night
-      <span class="nba-form"><i class="W"></i></span> win <span class="nba-form"><i class="L"></i></span> loss</div>
+    <div class="nba-title">Groups</div>
+    <div class="nba-legend"><span ${tip('leader')}><i class="pos-q">●</i> group leader</span> <span ${tip('wildcard')}><i class="pos-m">●</i> wild card</span>
+      <span ${tip('moved')}><span class="nba-up">▲</span><span class="nba-down">▼</span> moved</span>
+      <span ${tip('Form')}><span class="nba-form"><i class="W"></i></span> win <span class="nba-form"><i class="L"></i></span> loss</span></div>
     <div class="groups-grid">${st.groups.map((g, i) => nbaGroupCard(g, i, prev)).join('')}</div>`;
 
-  const past = all.filter(g => getDateKey(new Date(g.date), nbaTZ(g)) < todayKey);
-  const current = all.filter(g => !past.includes(g));
-  document.getElementById('nbaScheduleEl').innerHTML = `
-    <p class="nba-note">Only Cup games are listed. Regular NBA games on other nights are not part of the Cup.</p>
-    ${past.length ? `
-      <div class="past-toggle-bar ${nbaPastOpen ? 'open' : ''}" onclick="nbaTogglePast()">
-        <span class="ptb-arrow">▸</span>
-        <span class="ptb-label">Past games (${past.length})</span>
-      </div>
-      <div class="past-schedule ${nbaPastOpen ? 'open' : ''}">${nbaPastOpen ? nbaDays(past, todayKey) : ''}</div>` : ''}
-    ${current.length ? nbaDays(current, todayKey) : `<p class="schedule-empty">The NBA Cup is complete.</p>`}`;
 }
 
 // Box-score detail under the modal meta: quarter scores, leaders, ESPN's recap line.
@@ -426,12 +418,12 @@ function nbaDetail(g) {
   const played = g.status !== 'upcoming' && g.teams.some(t => t.q.length);
   const n = Math.max(...g.teams.map(t => t.q.length), 4);
   const line = played ? `<table class="nba-line">
-    <thead><tr><th></th>${Array.from({ length: n }, (_, i) => `<th>${i < 4 ? 'Q' + (i + 1) : 'OT' + (i > 4 ? i - 3 : '')}</th>`).join('')}<th>T</th></tr></thead>
+    <thead><tr><th></th>${Array.from({ length: n }, (_, i) => `<th ${tip(i < 4 ? 'Q' : 'OT')}>${i < 4 ? 'Q' + (i + 1) : 'OT' + (i > 4 ? i - 3 : '')}</th>`).join('')}<th ${tip('T')}>T</th></tr></thead>
     <tbody>${g.teams.map(t => `<tr class="${t.winner ? 'won' : ''}"><td>${nbaLogo(t)}${nbaEsc(t.abbr)}</td>${Array.from({ length: n }, (_, i) => `<td>${t.q[i] ?? ''}</td>`).join('')}<td><b>${t.score}</b></td></tr>`).join('')}</tbody>
   </table>` : '';
   const leaders = g.teams.some(t => t.lead.length) ? `<div class="nba-leaders">${g.teams.map(t => `
-    <div><div class="nba-leaders-team">${nbaLogo(t)}${nbaEsc(t.abbr)}${t.rec && !played ? `<span>Season ${nbaEsc(t.rec)}</span>` : ''}</div>
-      ${t.lead.map(l => `<div class="nba-leader"><b>${nbaEsc(l.v)}</b> ${nbaEsc(l.k)} <span>${nbaEsc(l.n)}</span></div>`).join('')}</div>`).join('')}</div>` : '';
+    <div><div class="nba-leaders-team">${nbaLogo(t)}${nbaEsc(t.abbr)}${t.rec && !played ? `<span ${tip('rec')}>Season ${nbaEsc(t.rec)}</span>` : ''}</div>
+      ${t.lead.map(l => `<div class="nba-leader"><b>${nbaEsc(l.v)}</b> <span class="nba-k" ${tip(l.k.toUpperCase())}>${nbaEsc(l.k)}</span> <span>${nbaEsc(l.n)}</span></div>`).join('')}</div>`).join('')}</div>` : '';
   el.innerHTML = (g.headline ? `<div class="nba-headline">${nbaEsc(g.headline)}</div>` : '')
     + line
     + (leaders ? `<div class="events-title">${played ? 'Game leaders' : 'Season leaders'}</div>${leaders}` : '');
@@ -450,14 +442,14 @@ function nbaModalScore(g) {
 }
 
 function openNbaModal(id) {
-  const g = nbaGames[id];
-  if (!g) return;
+  const g = nbaFind(id);
+  if (!g) { nbaPending = id; return; }
   currentModalId = 'NBA' + id;
   const sheet = document.getElementById('modal');
   sheet.classList.add('nba');
   sheet.classList.toggle('nba-noprob', g.status === 'final' || !nbaReal(g));
 
-  document.getElementById('mRound').textContent = `NBA Cup · ${NBA_ROUND[g.round]}`;
+  document.getElementById('mRound').textContent = g.round ? `NBA Cup · ${NBA_ROUND[g.round]}` : 'NBA · Regular season';
   [['Home', g.teams[0]], ['Away', g.teams[1]]].forEach(([side, t]) => {
     document.getElementById(`m${side}Flag`).innerHTML = t.logo ? `<img class="nba-logo-lg" src="${nbaEsc(t.logo)}" alt="">` : '🏀';
     document.getElementById(`m${side}Name`).textContent = t.name;
@@ -508,21 +500,4 @@ async function nbaProb(g) {
     </div>`).join('');
 }
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-if (typeof document !== 'undefined') {
-  try {
-    const saved = JSON.parse(localStorage.getItem(NBA_LS) || '{}');
-    nbaGames = saved.games || {}; nbaUpdated = saved.t || null;
-  } catch (e) {}
-  renderNba();
-  nbaFetch(true);
-  setInterval(() => { if (!document.hidden) nbaFetch(false); }, 60000);
-  setInterval(() => { if (!document.hidden) nbaFetch(true); }, 15 * 60000); // picks up newly named knockout teams
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) nbaFetch(true); });
-  window.addEventListener('online', () => nbaFetch(true));
-  if (location.hash.startsWith('#NBA')) {
-    setSport('nba');
-    openNbaModal(location.hash.slice(4));
-  }
-}
-if (typeof module !== 'undefined') module.exports = { nbaSlim, nbaStandings, nbaBracket };
+if (typeof module !== 'undefined') module.exports = { nbaGame, nbaSlim, nbaStandings, nbaBracket };

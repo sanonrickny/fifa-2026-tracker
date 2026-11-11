@@ -526,7 +526,7 @@ function renderGroups() {
         <thead>
           <tr>
             <th>Team</th>
-            <th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th>
+            ${['P','W','D','L','GD','Pts'].map(k => `<th ${tip(k)}>${k}</th>`).join('')}
           </tr>
         </thead>
         <tbody>
@@ -630,7 +630,7 @@ function scheduleCard(m, now) {
   const f = isKO ? (FEEDS[m.id] || {}) : {};
   const click = isKO ? `openKnockoutById('${m.id}')` : `openModal('${m.id}')`;
   return `<div class="schedule-match-card ${live?'is-live':''}${isFavMatch(m)?' is-fav':''}" onclick="${click}">
-    <div class="smc-group-badge">${isKO ? koBadge(m.id) : m.group}</div>
+    <div class="smc-group-badge" ${tip(isKO ? koBadge(m.id) : 'Group')}>${isKO ? koBadge(m.id) : m.group}</div>
     <div class="smc-teams">
       ${teamCell(m.home, f.home)}
       ${teamCell(m.away, f.away)}
@@ -735,7 +735,7 @@ function feedLabel(spec) {
   if (!spec) return 'TBD';
   if (spec.gw) return `Winner ${spec.gw}`;
   if (spec.gr) return `2nd ${spec.gr}`;
-  if (spec.g3) return `3rd · ${spec.g3.join('/')}`;
+  if (spec.g3) return `<span ${tip('best3')}>3rd · ${spec.g3.join('/')}</span>`;
   if (spec.l) return `Loser ${spec.l}`;
   return 'TBD';
 }
@@ -894,7 +894,7 @@ function renderBracket() {
       const awayPen = m.awayPens != null ? ` <span class="bt-pens">(${m.awayPens})</span>` : '';
 
       mc.innerHTML = `
-        <div class="bracket-date-line">${m.status==='live'?'<span class="live-pip"></span>':''}${formatDate(m.kickoffUTC, userTZ)} · ${formatTime(m.kickoffUTC, userTZ)}${m.homePens!=null?' · pens':''}</div>
+        <div class="bracket-date-line">${m.status==='live'?'<span class="live-pip"></span>':''}${formatDate(m.kickoffUTC, userTZ)} · ${formatTime(m.kickoffUTC, userTZ)}${m.homePens!=null?` · <span ${tip('pens')}>pens</span>`:''}</div>
         <div class="bracket-team ${!m.home?'tbd':''}${homeWin?' winner':''}${m.home&&favTeams.has(m.home.code)?' fav':''}">${homeLabel}<span class="bt-score">${m.homeScore ?? ''}${homePen}</span></div>
         <div class="bracket-team ${!m.away?'tbd':''}${awayWin?' winner':''}${m.away&&favTeams.has(m.away.code)?' fav':''}">${awayLabel}<span class="bt-score">${m.awayScore ?? ''}${awayPen}</span></div>
       `;
@@ -1476,26 +1476,115 @@ window.addEventListener('popstate', () => {
 });
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
-// Two competitions share one shell: the header picks the sport, the tab bar
-// picks Bracket / Schedule / Groups within it. NBA panels are `panel-nba-*`.
+// Two sports share one shell: the header picks the sport, the tab bar shows
+// that sport's own tabs (buttons carry data-for). NBA panels are `panel-nba-*`.
 const SPORT_KEY = 'rickcup_sport';
-let sport = 'wc', currentTab = 'bracket';
-try { if (localStorage.getItem(SPORT_KEY) === 'nba') sport = 'nba'; } catch (e) {}
+const tabs = { wc: 'bracket', nba: 'games' };
+let sport = 'wc', savedSport = null;
+try { savedSport = localStorage.getItem(SPORT_KEY); if (savedSport === 'nba') sport = 'nba'; } catch (e) {}
 
 function applyView() {
+  const tab = tabs[sport];
   document.body.classList.toggle('sport-nba', sport === 'nba');
-  const id = (sport === 'nba' ? 'panel-nba-' : 'panel-') + currentTab;
+  document.body.dataset.tab = tab;
+  const id = (sport === 'nba' ? 'panel-nba-' : 'panel-') + tab;
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === id));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === currentTab));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.for === sport && b.dataset.tab === tab));
   document.querySelectorAll('.sport-btn').forEach(b => b.classList.toggle('active', b.dataset.sport === sport));
   updateTimestamp();
 }
-function showTab(name) { currentTab = name; applyView(); }
+function showTab(name) { tabs[sport] = name; applyView(); scrollTo(0, 0); }
 function setSport(s) {
   sport = s;
   try { localStorage.setItem(SPORT_KEY, s); } catch (e) {}
   applyView();
 }
+
+// ─── EXPLAINERS ───────────────────────────────────────────────────────────────
+// Any element with data-tip="KEY" explains itself: hover or focus on desktop,
+// tap on a phone. KEY looks up TIPS; anything not in TIPS is shown as written.
+const TIPS = {
+  // Soccer
+  P: 'Played: matches played so far.',
+  W: 'Wins.',
+  D: 'Draws: matches that ended level. Worth 1 point.',
+  L: 'Losses.',
+  GD: 'Goal difference: goals scored minus goals let in. Breaks ties on points.',
+  Pts: 'Points: 3 for a win, 1 for a draw. The top 2 in each group go through, plus the 8 best third-placed teams.',
+  Group: 'Group stage: 12 groups of 4 teams. Everyone plays everyone in their group once.',
+  R32: 'Round of 32: the first knockout round. Lose and you go home.',
+  R16: 'Round of 16: the last 16 teams.',
+  QF: 'Quarterfinal: the last 8 teams.',
+  SF: 'Semifinal: the last 4. Winners play the final.',
+  '3rd': 'Third-place match: the two losing semifinalists play for bronze.',
+  F: 'The final. The winner is champion.',
+  best3: 'One of the 8 best third-placed teams from these groups takes this spot.',
+  pens: 'Penalty shootout: still level after extra time, so it was settled by penalty kicks. The number in brackets is shootout goals.',
+  prob: 'Each side\'s chance of winning. Soccer odds come from betting lines, NBA odds from ESPN\'s model. Updates during live games.',
+  // NBA season
+  GB: 'Games behind: how far a team trails the conference leader. A 2 GB team needs to win 2 more than the leader to catch up.',
+  L10: 'Record over the last 10 games: who is hot right now.',
+  STRK: 'Streak: W3 means 3 wins in a row, L2 means 2 losses in a row.',
+  rank: 'Place in the conference, ranked by win percentage (wins divided by games played). When the season ends it decides who makes the playoffs.',
+  East: 'The 30 teams are split into East and West, 15 each. Teams are ranked inside their own conference, and the two conference champions meet in the NBA Finals.',
+  West: 'The 30 teams are split into East and West, 15 each. Teams are ranked inside their own conference, and the two conference champions meet in the NBA Finals.',
+  playoffs: 'Places 1 to 6 go straight to the playoffs: best-of-7 knockout series that end in the NBA Finals.',
+  playin: 'Places 7 to 10 play a mini tournament (the play-in) for the last 2 playoff spots.',
+  out: 'Places 11 to 15 miss the playoffs. The worst teams get the best odds at the top picks in next summer\'s draft.',
+  season: '82 games per team, October to April. Then the playoffs decide the champion in June.',
+  rec: 'Season record: wins and losses so far this season.',
+  Cupgame: 'NBA Cup game: part of the in-season tournament. It also counts in the regular season standings.',
+  Q: 'Quarter: an NBA game is four 12-minute quarters.',
+  OT: 'Overtime: an extra 5 minutes, played when the score is tied after 4 quarters.',
+  T: 'Total points.',
+  PTS: 'Points: the team or player scored this many (per game on the leaders page).',
+  REB: 'Rebounds: grabbing the ball after a missed shot.',
+  AST: 'Assists: a pass that leads straight to a teammate scoring.',
+  STL: 'Steals: taking the ball away from the other team.',
+  BLK: 'Blocks: swatting away an opponent\'s shot.',
+  '3PM': 'Three-pointers made: shots from behind the arc, worth 3 points instead of 2.',
+  // NBA Cup
+  Cup: 'Record in NBA Cup games only. This is all that counts for the Cup.',
+  Season: 'Full regular season record. It does not count for the Cup.',
+  Diff: 'Point differential: points scored minus points allowed. Used to break ties.',
+  Form: 'Cup results in order: green is a win, red a loss, grey not played yet.',
+  wildcard: 'Wild card: the best second-placed team in each conference also reaches the quarterfinals.',
+  leader: 'Group leader: first place in a group of 5 goes to the quarterfinals.',
+  moved: 'Places gained or lost on the last game night.',
+  Projected: 'Who would play here if group play ended today.',
+};
+const tip = k => `data-tip="${k}" tabindex="0"`;
+
+const tipEl = document.createElement('div');
+tipEl.className = 'tip';
+tipEl.setAttribute('role', 'tooltip');
+document.body.appendChild(tipEl);
+let tipFor = null;
+function tipShow(el) {
+  tipFor = el;
+  tipEl.textContent = TIPS[el.dataset.tip] || el.dataset.tip;
+  tipEl.classList.add('on');
+  const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  tipEl.style.left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8)) + 'px';
+  tipEl.style.top = (r.top - h - 8 > 56 ? r.top - h - 8 : r.bottom + 8) + 'px';
+}
+function tipHide() { tipFor = null; tipEl.classList.remove('on'); }
+const canHover = matchMedia('(hover: hover)').matches;
+// Capture phase, so a tap on a tip inside a clickable card explains instead of opening the card.
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-tip]');
+  if (!el) return tipHide();
+  e.stopPropagation();
+  if (tipFor === el && !canHover) tipHide(); else tipShow(el);
+}, true);
+if (canHover) {
+  document.addEventListener('mouseover', e => { const el = e.target.closest('[data-tip]'); if (el && el !== tipFor) tipShow(el); });
+  document.addEventListener('mouseout', e => { if (tipFor && !tipFor.contains(e.relatedTarget)) tipHide(); });
+}
+document.addEventListener('focusin', e => { if (e.target.dataset?.tip) tipShow(e.target); });
+document.addEventListener('focusout', tipHide);
+document.addEventListener('scroll', tipHide, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') tipHide(); });
 
 // ─── RENDER ALL ───────────────────────────────────────────────────────────────
 // A compact fingerprint of everything the three panels render. When it's
@@ -1521,6 +1610,7 @@ function renderAll() {
   const sig = renderSignature();
   if (sig === lastRenderSig) return; // nothing the panels show has changed
   lastRenderSig = sig;
+  document.body.classList.toggle('wc-over', tournamentOver());  // no more goal alerts to offer
   renderGroups();
   renderSchedule();
   renderBracket();
@@ -1634,6 +1724,8 @@ buildMatches();
 loadResults();          // hydrate cached results so the page starts populated
 computeQualification(); // build standings + bracket from cache before first paint
 renderAll();
+// The World Cup is a summer archive: newcomers land on the NBA once the final is a day old.
+if (!savedSport && Date.now() > (knockoutMatchById('FIN').kickoffUTC?.getTime() ?? Infinity) + 864e5) sport = 'nba';
 applyView();
 
 // Deep link: a shared URL like /#QF1 opens that match's modal on load

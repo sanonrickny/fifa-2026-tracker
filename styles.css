@@ -808,7 +808,7 @@ body {
 .nba-bracket-wrap .bracket-cell { padding: 0.35rem 0; }
 
 /* ── SPORT SWITCH (header) + NBA tabs ── */
-.sport-switch { display: flex; gap: 0.25rem; flex: 1; min-width: 0; }
+.sport-switch { display: flex; gap: 0.25rem; flex-shrink: 0; margin-right: auto; }
 .sport-btn {
   background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.55);
   font-family: var(--font-display); font-weight: 800; font-size: 1rem;
@@ -816,7 +816,8 @@ body {
   padding: 0.3rem 0.6rem; border-radius: 999px;
 }
 .sport-btn.active { background: rgba(255,255,255,0.16); color: #fff; }
-body.sport-nba #nowStrip, body:not(.sport-nba) #nbaNow, body.sport-nba .notify-btn { display: none; }
+body.sport-nba #nowStrip, body:not(.sport-nba) #nbaNow, body.sport-nba .notify-btn, body.wc-over .notify-btn { display: none; }
+.last-updated { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .modal:not(.nba) #nbaDetail { display: none; }
 .lmc-flag .nba-logo { width: 30px; height: 30px; display: block; }
 
@@ -885,3 +886,84 @@ body.sport-nba #nowStrip, body:not(.sport-nba) #nbaNow, body.sport-nba .notify-b
   font-family: var(--font-body); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em;
   text-transform: uppercase; text-align: left; color: var(--muted); background: var(--bg); padding: 0.3rem 0.65rem;
 }
+
+/* ── TABS PER SPORT ── */
+body.sport-nba .tab-btn[data-for="wc"], body:not(.sport-nba) .tab-btn[data-for="nba"] { display: none; }
+body:not([data-tab="cup"]) #nbaNow { display: none; }  /* live games already lead the Games list */
+.live-badge { cursor: pointer; }
+
+/* ── EXPLAINERS (data-tip) ── */
+[data-tip] {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.tip {
+  position: fixed; z-index: 1000; left: 0; top: 0;
+  max-width: min(280px, calc(100vw - 16px));
+  background: var(--ink); color: #fff;
+  font-family: var(--font-body); font-size: 0.78rem; font-weight: 500;
+  line-height: 1.4; letter-spacing: 0; text-transform: none; text-align: left;
+  padding: 0.55rem 0.7rem; border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  pointer-events: none; opacity: 0; visibility: hidden;
+  transition: opacity 0.12s;
+}
+.tip.on { opacity: 1; visibility: visible; }
+
+/* ── NBA GAMES ── */
+.day-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  max-width: 480px; margin: 0 auto 0.85rem;
+  background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.day-nav button {
+  background: none; border: none; cursor: pointer;
+  font-size: 1.6rem; line-height: 1; color: var(--pitch);
+  width: 52px; height: 48px;
+}
+.day-nav-label {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.25rem;
+  text-transform: uppercase; letter-spacing: 0.03em; text-align: center;
+}
+.day-nav-label small { display: block; font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted); letter-spacing: 0.04em; }
+#nbaGamesEl .schedule-matches-list { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 0.6rem; }
+.day-today {
+  display: block; margin: 1rem auto 0; padding: 0.55rem 1.1rem;
+  background: var(--pitch); color: #fff; border: none; border-radius: 999px;
+  font-family: var(--font-body); font-weight: 700; font-size: 0.8rem; cursor: pointer;
+}
+.nba-cup-badge { color: var(--brass); font-size: 0.75rem; }
+.nba-rec { font-family: var(--font-mono); font-size: 0.66rem; font-weight: 400; color: var(--muted); margin-left: 0.15rem; }
+
+/* ── NBA STANDINGS ── */
+.season-table th, .season-table td { padding-left: 0.2rem; padding-right: 0.2rem; }
+.season-table th:first-child, .season-table td:first-child { padding-left: 0.65rem; }
+.season-table .col-num { width: 2.15rem; }
+.season-table col:nth-child(4) { width: 2.4rem; }  /* GB */
+.season-table col:nth-child(5), .season-table col:nth-child(6) { width: 2.5rem; }  /* L10, STRK */
+.season-table td.strk-w { color: var(--green); }
+.season-table td.strk-l { color: var(--live); }
+.team-pos.zone-playoffs, .zone-legend .zone-playoffs { color: var(--green); }
+.team-pos.zone-playin, .zone-legend .zone-playin { color: var(--brass); }
+.standings-table tr.nba-sub.zone-playoffs td { color: var(--green); }
+.standings-table tr.nba-sub.zone-playin td { color: var(--brass); }
+.zone-legend { display: flex; justify-content: center; gap: 1rem; font-size: 0.72rem; font-weight: 600; color: var(--muted); margin-bottom: 0.8rem; }
+.zone-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.3rem; background: currentColor; }
+.zone-legend i.zone-out { color: var(--line); }
+
+/* ── NBA LEADERS ── */
+.lead-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.5rem 0.9rem; border-bottom: 1px solid var(--line);
+}
+.lead-row:last-child { border-bottom: none; }
+.lead-rank { width: 14px; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; color: var(--muted); }
+.lead-face { width: 44px; height: 32px; object-fit: cover; border-radius: 6px; background: var(--bg); flex-shrink: 0; }
+.lead-name { flex: 1; min-width: 0; font-weight: 700; font-size: 0.86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lead-name small { display: flex; align-items: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.64rem; color: var(--muted); font-weight: 400; }
+.lead-name small .nba-logo { width: 14px; height: 14px; }
+.lead-val { font-family: var(--font-mono); font-weight: 700; font-size: 1rem; color: var(--ink); }
+.lead-row.top .lead-val { color: var(--green); font-size: 1.15rem; }
+.lead-row.top .lead-face { width: 56px; height: 40px; }

@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="WC26" />
-  <meta name="description" content="Live scores, schedule, bracket, and standings for the 2026 World Cup and the NBA Cup, in your local time." />
+  <meta name="description" content="Live scores, standings, and stat leaders for the NBA season and NBA Cup, plus the 2026 World Cup, in your local time." />
   <meta property="og:title" content="World Cup 26 Live" />
   <meta property="og:description" content="Live scores, schedule, bracket, and standings for the 2026 World Cup, in your local time." />
   <meta property="og:type" content="website" />
@@ -33,11 +33,11 @@
 <header class="site-header">
   <div class="sport-switch">
     <button class="sport-btn active" data-sport="wc" onclick="setSport('wc')">⚽ World Cup</button>
-    <button class="sport-btn" data-sport="nba" onclick="setSport('nba')">🏀 NBA Cup</button>
+    <button class="sport-btn" data-sport="nba" onclick="setSport('nba')">🏀 NBA</button>
   </div>
   <span class="last-updated" id="lastUpdated"></span>
   <button class="notify-btn" id="notifyBtn" onclick="toggleNotify()" aria-pressed="false" aria-label="Goal alerts off">🔕</button>
-  <div class="live-badge" id="liveBadge" style="display:none">
+  <div class="live-badge" id="liveBadge" style="display:none" onclick="if (sport === 'nba') showTab('games')">
     <span class="live-dot"></span> LIVE
   </div>
 </header>
@@ -61,23 +61,40 @@
     <div class="groups-grid" id="groupsGrid"></div>
   </div>
 
-  <div class="panel" id="panel-nba-bracket"><div id="nbaBracketEl"></div></div>
-  <div class="panel" id="panel-nba-schedule"><div id="nbaScheduleEl"></div></div>
-  <div class="panel" id="panel-nba-groups"><div id="nbaGroupsEl"></div></div>
+  <div class="panel" id="panel-nba-games"><div id="nbaGamesEl"></div></div>
+  <div class="panel" id="panel-nba-standings"><div id="nbaStandingsEl"></div></div>
+  <div class="panel" id="panel-nba-leaders"><div id="nbaLeadersEl"></div></div>
+  <div class="panel" id="panel-nba-cup"><div id="nbaBracketEl"></div><div id="nbaGroupsEl"></div></div>
 </main>
 
 <nav class="tabbar">
-  <button class="tab-btn active" data-tab="bracket" onclick="showTab('bracket')">
+  <button class="tab-btn active" data-for="wc" data-tab="bracket" onclick="showTab('bracket')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h5M4 11h5M9 5v6M9 8h5M14 8v8M4 19h5M4 16v6M14 12h5"/></svg>
     Bracket
   </button>
-  <button class="tab-btn" data-tab="schedule" onclick="showTab('schedule')">
+  <button class="tab-btn" data-for="wc" data-tab="schedule" onclick="showTab('schedule')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
     Schedule
   </button>
-  <button class="tab-btn" data-tab="groups" onclick="showTab('groups')">
+  <button class="tab-btn" data-for="wc" data-tab="groups" onclick="showTab('groups')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
     Groups
+  </button>
+  <button class="tab-btn" data-for="nba" data-tab="games" onclick="showTab('games')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3 3 3 9.8 0 12.8M18.4 5.6c-3 3-3 9.8 0 12.8"/></svg>
+    Games
+  </button>
+  <button class="tab-btn" data-for="nba" data-tab="standings" onclick="showTab('standings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    Standings
+  </button>
+  <button class="tab-btn" data-for="nba" data-tab="leaders" onclick="showTab('leaders')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>
+    Leaders
+  </button>
+  <button class="tab-btn" data-for="nba" data-tab="cup" onclick="showTab('cup')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v4M8 21h8M9 18h6"/></svg>
+    Cup
   </button>
 </nav>
 
@@ -119,7 +136,7 @@
       <div class="prob-section" id="probSection">
         <div class="prob-section-title">
           <span class="prob-live-dot" id="probLiveDot" style="display:none"></span>
-          Win Probability
+          <span data-tip="prob" tabindex="0">Win Probability</span>
           <span class="prob-source" id="probSource"></span>
         </div>
         <div id="probContent"><div class="prob-loading">Loading odds…</div></div>
@@ -139,5 +156,6 @@
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script src="nba.js"></script>
+<script src="nba-season.js"></script>
 </body>
 </html>

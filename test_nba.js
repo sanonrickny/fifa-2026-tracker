@@ -62,4 +62,18 @@ ok(qf[2].projected && qf[3].projected, 'West still projected (TBD event ignored)
 ok(sf[0].teams.map(t => t.abbr).join() === 'NY,ATL', 'QF winners advance to the semifinal');
 ok(fin[0].teams.every(t => t == null) && !fin[0].winner, 'final undecided');
 
-if (!process.exitCode) console.log('NBA Cup checks passed');
+// Regular season: non-Cup games still parse, standings split into zones.
+const { nbaTableSlim, nbaZone, nbaShift } = require('./nba-season.js');
+ok(require('./nba.js').nbaGame(events[0]).round === null, 'season game parses with no Cup round');
+const stat = (type, value, displayValue = String(value)) => ({ type, value, displayValue });
+const table = nbaTableSlim({ children: [{ abbreviation: 'East', standings: { entries: EAST.map((a, i) => ({
+  team: { abbreviation: a, shortDisplayName: a },
+  stats: [stat('playoffseed', 15 - i), stat('wins', i), stat('losses', 14 - i), stat('gamesbehind', 0, '-')],
+})) } }] });
+const seeds = table[0].teams.map(t => t.seed);
+ok(seeds.join() === [...Array(15)].map((_, i) => i + 1).join(), 'standings sorted by seed');
+ok(table[0].teams[0].abbr === 'WSH' && table[0].teams[0].gb === '-', 'top seed first, display values kept');
+ok(seeds.map(nbaZone).join() === 'playoffs,'.repeat(6) + 'playin,'.repeat(4) + 'out,out,out,out,out', 'zones split 6/4/5');
+ok(nbaShift('20261231', 1) === '20270101' && nbaShift('20261103', -3) === '20261031', 'day stepping');
+
+if (!process.exitCode) console.log('NBA Cup and season checks passed');
